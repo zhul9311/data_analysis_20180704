@@ -24,6 +24,7 @@ import matplotlib as mpl
 import periodictable 
 from periodictable import *
 import copy
+import pdb
 
 (Ui_MainWindow, QMainWindow) = uic.loadUiType('mainwindow.ui')
 
@@ -45,6 +46,7 @@ class MainWindow (QMainWindow):
         self.refcal=[]
         self.sldcal=[]
         self.halftab='      '
+        self.initRefFile()
         self.refsavefitindex=0
         self.refsavedataindex=0
         self.rodsavefitindex=0
@@ -138,9 +140,9 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.refedlegendCB,SIGNAL('stateChanged(int)'), self.updateRefEDPlot)
         self.connect(self.ui.refedlegendlocCoB,SIGNAL('currentIndexChanged(int)'), self.updateRefEDPlot)
         self.connect(self.ui.refedscalePB, SIGNAL('clicked()'), self.setEDPlotScale)
-        self.connect(self.ui.insrefslabPB, SIGNAL('clicked()'), self.insRefSlab)
-        self.connect(self.ui.rmrefslabPB, SIGNAL('clicked()'), self.rmRefSlab)
-        self.connect(self.ui.refnumslabSB, SIGNAL('valueChanged(int)'), self.modRefSlab)
+        self.ui.insrefslabPB.clicked.connect(self.insRefSlab)
+        self.ui.rmrefslabPB.clicked.connect(self.rmRefSlab)
+        self.ui.refnumslabSB.valueChanged.connect(self.modRefSlab)
         self.connect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
         self.connect(self.ui.refparTW,SIGNAL('cellDoubleClicked(int,int)'),self.setupRefPara)
         self.connect(self.ui.calrefCB, SIGNAL('stateChanged(int)'),self.updateRefCal)
@@ -245,6 +247,11 @@ class MainWindow (QMainWindow):
 #state the reflectivity analysis section. 
 ################################################
 
+    def initRefFile(self):
+        self.directory = "/Users/zhuzi/Documents/2018_b_summer/research/agent"
+        self.reffiles = [self.directory + '/simulated_reflectivity_' \
+                         + str(i+1) + '_rrf.txt' for i in range(5)]
+        self.updateRefFile()
         
     def openRefFile(self):  #open ref files and also remove all current ref files in the listwidget
         f=QFileDialog.getOpenFileNames(caption='Select Multiple REF Files to import', directory=self.directory, filter='RRF Files (*.rrf*;*_rrf.txt;*_rrf0.txt)')
@@ -262,6 +269,7 @@ class MainWindow (QMainWindow):
                 self.ui.reffileLW.addItem('#'+str(i+1)+self.halftab+str(self.reffiles[i].split('/')[-2])+'/'+str(self.reffiles[i].split('/')[-1]))
             
     def addRefFile(self): #add ref files into the listwidget and deselect all ref files in the listwidget
+            
         f=QFileDialog.getOpenFileNames(caption='Select Multiple REF Files to import', directory=self.directory, filter='RRF Files (*.rrf*;*_rrf.txt;*_rrf0.txt)')
         self.reffiles=self.reffiles+map(str, f)
         self.directory=str(QFileInfo(self.reffiles[0]).absolutePath())
@@ -636,7 +644,6 @@ class MainWindow (QMainWindow):
                 self.updateRefEDPlot()
         
     def refCalFun(self,d,rho,mu,sigma,syspara,x):
-        import pdb; pdb.set_trace();
         qoff=syspara[0] 
         yscale=syspara[1]
         qres=syspara[2] 
@@ -944,7 +951,6 @@ class MainWindow (QMainWindow):
             else:
                 yerr=np.ones_like(x)
            # print yerr
-            import pdb; pdb.set_trace();
             self.refresult=minimize(self.ref2min, self.refparameter, args=(x,y,yerr))
 
             print(fit_report(self.refresult))
@@ -1022,8 +1028,7 @@ class MainWindow (QMainWindow):
         self.multiRefParInit('ref_multiFit_par.ui',len(qz))
         
         # do something...
-        
-    
+           
     def multiRefParInit(self,ui_name,ndata): 
         
         self.mrefpar = uic.loadUi(ui_name,QDialog(self))
@@ -1071,7 +1076,10 @@ class MainWindow (QMainWindow):
         # connect functions 
         self.mrefpar.fitPB.clicked.connect(self.multiFitRef)
         self.mrefpar.errcalPB.clicked.connect(self.multiErrorCal)
+        # def enter_pdb():import pdb;pdb.set_trace()
+        # self.mrefpar.clerefconPB.clicked.connect(enter_pdb)
         self.mrefpar.show()
+        import pdb;pdb.set_trace()
     
     def multiFitRef(self):
         self.messageBox("multiFitRef called")
@@ -1080,7 +1088,6 @@ class MainWindow (QMainWindow):
         self.messageBox("multiErrorCal called")
         
     def ref2min(self, params, x, y, yerr): #residuel for ref fitting
-        import pdb; pdb.set_trace();
         row=self.ui.refparTW.rowCount()
         d=[params[self.refparaname[i*4+3]].value for i in range(row-2)]
         rho=[params[self.refparaname[i*4]].value for i in range(row-1)]
@@ -2314,7 +2321,6 @@ class MainWindow (QMainWindow):
             self.uiflusavefit.close()    
       
     def fluErrorInit(self):
-        # import pdb; pdb.set_trace()
         
         # choose the parameter for which the chisq is calculated
         fluerr_pname_to_fit_num = 0 # initialize # of the chosen parameters
@@ -2327,7 +2333,6 @@ class MainWindow (QMainWindow):
             
             # if Y_scale is selected, also enter debug mode (a trick!!!)
             if self.uifluCB[2].checkState() != 0:
-                import pdb; pdb.set_trace()
                 # if y_scale is the only selected, fit y_scale.
                 if fluerr_pname_to_fit_num == 0:
                     fluerr_pname_to_fit_num = 1
