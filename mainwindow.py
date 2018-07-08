@@ -486,7 +486,7 @@ class MainWindow (QMainWindow):
             middle.extend(['d'+layer,'rho'+layer,'mu'+layer,'sigma'+layer])
         self.refparaname=top+middle+bottom
         self.refsysparaname=['q_off', 'y_scale', 'q_res']
-        
+           
     def insRefSlab(self, selrows=None): #add a slab in refpar table
         if selrows==None:
             insrows=self.ui.refparTW.selectionModel().selectedRows()
@@ -570,11 +570,11 @@ class MainWindow (QMainWindow):
         #selrow=self.ui.refparTW.currentRow()
         selcol=self.ui.refparTW.currentColumn()
         #print selrow, selcol
-        #        if selrow==self.ui.refparTW.rowCount()-1:
-        #            paranum=selrow*4+selcol-2
-        #        else:
-        #            paranum=selrow*4+selcol-1
-        #        self.refpara[paranum][0]= float(str(self.ui.refparTW.item(selrow,selcol).text()))    # update the current value for selected cell in the ref parameter dictionary
+               if selrow==self.ui.refparTW.rowCount()-1:
+                   paranum=selrow*4+selcol-2
+               else:
+                   paranum=selrow*4+selcol-1
+               self.refpara[paranum][0]= float(str(self.ui.refparTW.item(selrow,selcol).text()))    # update the current value for selected cell in the ref parameter dictionary
         #print self.refpara
         if self.ui.refroughCB.checkState()!=0 and selcol==3:
             self.sameRough()  #fix all roughness
@@ -896,6 +896,7 @@ class MainWindow (QMainWindow):
         self.refsyspara[2][0]=float(self.ui.refqresLE.text())
         
     def fitRef(self):
+        import pdb; pdb.set_trace()
         self.getRefParaVal()
         index=self.ui.refparTW.selectionModel().selectedIndexes()
         row=self.ui.refparTW.rowCount()
@@ -950,12 +951,12 @@ class MainWindow (QMainWindow):
                 yerr=y
             else:
                 yerr=np.ones_like(x)
-           # print yerr
+                
             self.refresult=minimize(self.ref2min, self.refparameter, args=(x,y,yerr))
 
             print(fit_report(self.refresult))
             residual=np.vstack((x,self.refresult.residual)).T
-           # print residual
+
             self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
             if self.ui.refroughCB.checkState()!=0: #enforce the roughness to be same if set
                 for i in range(1,row-1):
@@ -995,39 +996,20 @@ class MainWindow (QMainWindow):
             #print self.refparameter[self.refparaname[-1]]
     
     def multiRefInit(self):
-        import fit_ref as mfit
         
-        selectedreffiles=self.ui.reffileLW.selectedItems()
+        # selectedreffiles=self.ui.reffileLW.selectedItems()
+        num_data = len(self.selectedreffiles_rows)
         # identify how many differnt bottom phase is there and add different bottom phase.
         
         # if only one data selected, do nothing
-        if  len(self.selectedreffiles_rows)<=1: #plot ref files
+        if num_data<=1: #plot ref files
             self.messageBox("Please select more than one file!")
             return
-        
-        # read multiple data set and cut them to fit range
-        rrf = [np.loadtxt(self.reffiles[r],comments='#') \
-               for r in self.selectedreffiles_rows]
-        fit_range = \
-            [float(i) for i in str(self.ui.reffitranLE.text()).split(':')]
-        for i,d in enumerate(rrf):
-            select = (d[:,0]>=fit_range[0])&(d[:,0]<=fit_range[1])
-            rrf[i] = d[select]
-        qz = tuple([a[:,0] for a in rrf]) # tuple: (qz1,qz2,...)
-        data = tuple([a[:,1] for a in rrf]) # tuple: (data1,data2,...)
-        if self.ui.referrCB.currentIndex()==0: # tuple: (err1,err2,...)
-            err = tuple([a[:,2] for a in rrf])
-        elif self.ui.referrCB.currentIndex()==1:
-            err = tuple([np.sqrt(a[:,1]) for a in rrf])
-        elif self.ui.referrCB.currentIndex()==2:
-            err = tuple([a[:,1] for a in rrf])
-        else:
-            err=tuple([np.ones(a[:,0].shape) for a in rrf])
 
         # initialize the parameter panel with number of datasets
-        self.multiRefParInit('ref_multiFit_par.ui',len(qz))
+        self.multiRefParInit('ref_multiFit_par.ui',num_data)
         
-        # do something...
+        # create a Parameter() object that contains all the parameters
            
     def multiRefParInit(self,ui_name,ndata): 
         
@@ -1058,17 +1040,29 @@ class MainWindow (QMainWindow):
         
         self.mrefpar.numslabSB.setValue(1)
         
-        self.refparaname = list(np.append(
-            ['rho_t','mu_t','sigma0','d1','rho1'],
-            [['rho_b'+str(i+1),'qoff'+str(i+1)] for i in range(ndata)]
-        ))
+        # reset self.refparaname
+        import pdb; pdb.set_trace()
+        layers = self.mrefpar.numslabSB.value()
+        top = ['rho_t','mu_t','sigma0']
+        middle = []
+        bottom = []
+        for i in range(layers):
+            layer = str(i+1)
+            middle.extend(['d'+layer,'rho'+layer,'mu'+layer,'sigma'+layer])
+        for i in range(ndata):
+            bottom.extend(['rho_b'+str(i+1),'qoff'+str(i+1)])
+        self.refparaname = list(np.concatenate((top,middle,bottom),axis=0))
         
-
+        
         #initialize the parameter dictionary
-        self.refpara={} 
+        self.refpara=[0]*(ndata+layers+1)
         self.refpara[0]=[0,False, None,None] # rho_t
         self.refpara[1]=[0,False, None,None] # mu_t
         self.refpara[2]=[3,False, None,None] # sigma0
+        for i in range(layers):
+            for j in range(4):
+                value = float(str(par_table.item(i,j).text())) 
+                self.refpara[4*i+3+j] = [0,False,None,None]
         for i in range(ndata): # rho_b & qoffset for each data
             self.refpara[2*(i-ndata)]=[0.333+0.02*i,False, None,None] # rho_b
             self.refpara[2*(i-ndata)+1]=[0,False, None,None] # qoffset
@@ -1079,13 +1073,44 @@ class MainWindow (QMainWindow):
         # def enter_pdb():import pdb;pdb.set_trace()
         # self.mrefpar.clerefconPB.clicked.connect(enter_pdb)
         self.mrefpar.show()
-        import pdb;pdb.set_trace()
     
     def multiFitRef(self):
-        self.messageBox("multiFitRef called")
+        import fit_ref as mfit
+        
+        # read multiple data set and cut them to fit range
+        rrf = [np.loadtxt(self.reffiles[r],comments='#') \
+               for r in self.selectedreffiles_rows]
+        fit_range = \
+            [float(i) for i in str(self.ui.reffitranLE.text()).split(':')]
+        for i,d in enumerate(rrf):
+            select = (d[:,0]>=fit_range[0])&(d[:,0]<=fit_range[1])
+            rrf[i] = d[select]
+        qz = tuple([a[:,0] for a in rrf]) # tuple: (qz1,qz2,...)
+        data = tuple([a[:,1] for a in rrf]) # tuple: (data1,data2,...)
+        if self.ui.referrCB.currentIndex()==0: # tuple: (err1,err2,...)
+            err = tuple([a[:,2] for a in rrf])
+        elif self.ui.referrCB.currentIndex()==1:
+            err = tuple([np.sqrt(a[:,1]) for a in rrf])
+        elif self.ui.referrCB.currentIndex()==2:
+            err = tuple([a[:,1] for a in rrf])
+        else:
+            err=tuple([np.ones(a[:,0].shape) for a in rrf])
+            
+        # create a Parameter() object to be fitted with
+        
+        self.refparameter = Parameter()
+        
+        
+        # minimize the residual
+        self.refresult=minimize(mfit.ref2min, self.refparameter, 
+                                args=(x,y,yerr),
+                                kws={'fit':True})
+        
+        
+        # replace the display with best fit and print out report
         
     def multiErrorCal(self):
-        self.messageBox("multiErrorCal called")
+        import pdb; pdb.set_trace()
         
     def ref2min(self, params, x, y, yerr): #residuel for ref fitting
         row=self.ui.refparTW.rowCount()
