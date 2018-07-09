@@ -570,11 +570,11 @@ class MainWindow (QMainWindow):
         #selrow=self.ui.refparTW.currentRow()
         selcol=self.ui.refparTW.currentColumn()
         #print selrow, selcol
-               if selrow==self.ui.refparTW.rowCount()-1:
-                   paranum=selrow*4+selcol-2
-               else:
-                   paranum=selrow*4+selcol-1
-               self.refpara[paranum][0]= float(str(self.ui.refparTW.item(selrow,selcol).text()))    # update the current value for selected cell in the ref parameter dictionary
+        #        if selrow==self.ui.refparTW.rowCount()-1:
+        #            paranum=selrow*4+selcol-2
+        #        else:
+        #            paranum=selrow*4+selcol-1
+        #        self.refpara[paranum][0]= float(str(self.ui.refparTW.item(selrow,selcol).text()))    # update the current value for selected cell in the ref parameter dictionary
         #print self.refpara
         if self.ui.refroughCB.checkState()!=0 and selcol==3:
             self.sameRough()  #fix all roughness
@@ -1014,8 +1014,10 @@ class MainWindow (QMainWindow):
     def multiRefParInit(self,ui_name,ndata): 
         
         self.mrefpar = uic.loadUi(ui_name,QDialog(self))
+        self.mrefpar.numslabSB.setValue(1)
         
         # Initialize the parameter table
+        import pdb; pdb.set_trace();
         par_table = self.mrefpar.parTW
         par_table.cellChanged.connect(self.updateRefParaVal)
         par_table.cellDoubleClicked.connect(self.setupRefPara)
@@ -1026,46 +1028,65 @@ class MainWindow (QMainWindow):
                 <<u'\u03c1'+' (e/'+u'\u212b'+u'\u00b3'+')' \
                 <<u'\u03bc'+' (cm'+u'\u207b'+u'\u00b9'+')' \
                 <<u'\u03c3'+' ('+u'\u212b'+')')
-        for i in range(ndata+2): 
-            if i==0:  # top phase 
-                value=['top',0,0,3] 
-            elif i==1:  # one layer in the middle
-                value = [11,0.3,0,3]
-            else:  # bottom phases for different data sets
-                value = ['bottom'+str(i-1), 0.333+0.02*(i-2), 0, 'NA']
-            for j in range(4):
-                par_table.setItem(i,j,QTableWidgetItem(str(value[j])))
-        par_table.show()
         
-        
-        self.mrefpar.numslabSB.setValue(1)
-        
-        # reset self.refparaname
-        import pdb; pdb.set_trace()
+        # setup parameter name and display for top,middle and bottom phases
         layers = self.mrefpar.numslabSB.value()
-        top = ['rho_t','mu_t','sigma0']
-        middle = []
-        bottom = []
+        tab_top = [['top',0.2591,0,3],]
+        name_top = [['rho_t','mu_t','sigma0'],]
+        name_mid,tab_mid = [0]*layers, [0]*layers
         for i in range(layers):
             layer = str(i+1)
-            middle.extend(['d'+layer,'rho'+layer,'mu'+layer,'sigma'+layer])
+            tab_mid[i] = [11,0,0,0]
+            name_mid[i] = ['d'+layer,'rho'+layer,'mu'+layer,'sigma'+layer]
+        name_bot, tab_bot = [0]*ndata, [0]*ndata
         for i in range(ndata):
-            bottom.extend(['rho_b'+str(i+1),'qoff'+str(i+1)])
-        self.refparaname = list(np.concatenate((top,middle,bottom),axis=0))
+            kind = str(i+1)
+            name_bot[i] = ['rho_b'+kind,'qoff'+kind]
+            tab_bot[i] = ['bottom'+kind,0.333+0.02*i,0,'N/A']
+        
+        # Initialize parameter anmes in self.refparaname
+        self.refparaname = \
+            [x for row in (name_top+name_mid+name_bot) for x in row]
+        
+        # Display the parameter table
+        tab_display = tab_top + tab_mid + tab_bot
+        for i,row in enumerate(tab_display):
+            for j,cell in enumerate(row):
+                par_table.setItem(i,j,QTableWidgetItem(str(cell)))
+        par_table.show()
+        
+        #initialize the parameter dictionary in self.refpara
+        tab_flat = [x for row in tab_display for x in row if type(x) is not str]
+        self.refpara=[0] * len(tab_flat)
+        for i,value in enumerate(tab_flat):
+            self.refpara[i] = [value, False, None, None]
+            
+            
+        
+                #
+        # for i in range(ndata+2):
+        #     if i==0:  # top phase
+        #         value=['top',0,0,3]
+        #     elif i==1:  # one layer in the middle
+        #         value = [11,0.3,0,3]
+        #     else:  # bottom phases for different data sets
+        #         value = ['bottom'+str(i-1), 0.333+0.02*(i-2), 0, 'NA']
+        #     for j in range(4):
+        #         par_table.setItem(i,j,QTableWidgetItem(str(value[j])))
+        # par_table.show()
         
         
-        #initialize the parameter dictionary
-        self.refpara=[0]*(ndata+layers+1)
-        self.refpara[0]=[0,False, None,None] # rho_t
-        self.refpara[1]=[0,False, None,None] # mu_t
-        self.refpara[2]=[3,False, None,None] # sigma0
-        for i in range(layers):
-            for j in range(4):
-                value = float(str(par_table.item(i,j).text())) 
-                self.refpara[4*i+3+j] = [0,False,None,None]
-        for i in range(ndata): # rho_b & qoffset for each data
-            self.refpara[2*(i-ndata)]=[0.333+0.02*i,False, None,None] # rho_b
-            self.refpara[2*(i-ndata)+1]=[0,False, None,None] # qoffset
+        
+        # self.refpara[0]=[0,False, None,None] # rho_t
+#         self.refpara[1]=[0,False, None,None] # mu_t
+#         self.refpara[2]=[3,False, None,None] # sigma0
+#         for i in range(layers):
+#             for j in range(4):
+#                 value = float(str(par_table.item(i+1,j).text()))
+#                 self.refpara[4*i+3+j] = [0,False,None,None]
+#         for i in range(ndata): # rho_b & qoffset for each data
+#             self.refpara[2*(i-ndata)]=[0.333+0.02*i,False, None,None] # rho_b
+#             self.refpara[2*(i-ndata)+1]=[0,False, None,None] # qoffset
         
         # connect functions 
         self.mrefpar.fitPB.clicked.connect(self.multiFitRef)
