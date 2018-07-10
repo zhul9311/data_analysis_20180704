@@ -1082,11 +1082,10 @@ class MainWindow (QMainWindow):
         cursor.setPosition(0)
         self.ui.refparaTB.setTextCursor(cursor)
        
-       
     def updateMultiParDisp(self,ui,params):
         
         # self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
-        ui.cellChanged.disconnect(self.uipdateRefparaVal)
+        ui.parTW.cellChanged.disconnect(self.uipdateRefparaVal)
         
         p = params.valuesdict()
         par_table = ui.parTW
@@ -1142,10 +1141,8 @@ class MainWindow (QMainWindow):
         else:
             yerr=tuple([np.ones(a[:,0].shape) for a in rrf])
         
-        # toggle to "vary" if one parameter is selected from the display
-        fit_list = []
-          
         # create a Parameter() object to be fitted with
+        fit_list = mfit.selectedItem(ui,self.refparaname) # if fit, then vary
         self.refparameter = mfit.initParameters(self.refparaname, self.refpara,
                                                 vary=fit_list)
         
