@@ -1017,7 +1017,6 @@ class MainWindow (QMainWindow):
         self.mrefpar.numslabSB.setValue(1)
         
         # Initialize the parameter table
-        import pdb; pdb.set_trace();
         par_table = self.mrefpar.parTW
         par_table.cellChanged.connect(self.updateRefParaVal)
         par_table.cellDoubleClicked.connect(self.setupRefPara)
@@ -1044,7 +1043,7 @@ class MainWindow (QMainWindow):
             name_bot[i] = ['rho_b'+kind,'qoff'+kind]
             tab_bot[i] = ['bottom'+kind,0.333+0.02*i,0,'N/A']
         
-        # Initialize parameter anmes in self.refparaname
+        # Initialize parameter names in self.refparaname
         self.refparaname = \
             [x for row in (name_top+name_mid+name_bot) for x in row]
         
@@ -1061,33 +1060,6 @@ class MainWindow (QMainWindow):
         for i,value in enumerate(tab_flat):
             self.refpara[i] = [value, False, None, None]
             
-            
-        
-                #
-        # for i in range(ndata+2):
-        #     if i==0:  # top phase
-        #         value=['top',0,0,3]
-        #     elif i==1:  # one layer in the middle
-        #         value = [11,0.3,0,3]
-        #     else:  # bottom phases for different data sets
-        #         value = ['bottom'+str(i-1), 0.333+0.02*(i-2), 0, 'NA']
-        #     for j in range(4):
-        #         par_table.setItem(i,j,QTableWidgetItem(str(value[j])))
-        # par_table.show()
-        
-        
-        
-        # self.refpara[0]=[0,False, None,None] # rho_t
-#         self.refpara[1]=[0,False, None,None] # mu_t
-#         self.refpara[2]=[3,False, None,None] # sigma0
-#         for i in range(layers):
-#             for j in range(4):
-#                 value = float(str(par_table.item(i+1,j).text()))
-#                 self.refpara[4*i+3+j] = [0,False,None,None]
-#         for i in range(ndata): # rho_b & qoffset for each data
-#             self.refpara[2*(i-ndata)]=[0.333+0.02*i,False, None,None] # rho_b
-#             self.refpara[2*(i-ndata)+1]=[0,False, None,None] # qoffset
-        
         # connect functions 
         self.mrefpar.fitPB.clicked.connect(self.multiFitRef)
         self.mrefpar.errcalPB.clicked.connect(self.multiErrorCal)
@@ -1096,7 +1068,10 @@ class MainWindow (QMainWindow):
         self.mrefpar.show()
     
     def multiFitRef(self):
-        import fit_ref as mfit
+        try:
+            mfit=reload(fit_ref)
+        except:
+            import fit_ref as mfit
         
         # read multiple data set and cut them to fit range
         rrf = [np.loadtxt(self.reffiles[r],comments='#') \
@@ -1109,27 +1084,29 @@ class MainWindow (QMainWindow):
         qz = tuple([a[:,0] for a in rrf]) # tuple: (qz1,qz2,...)
         data = tuple([a[:,1] for a in rrf]) # tuple: (data1,data2,...)
         if self.ui.referrCB.currentIndex()==0: # tuple: (err1,err2,...)
-            err = tuple([a[:,2] for a in rrf])
+            yerr = tuple([a[:,2] for a in rrf])
         elif self.ui.referrCB.currentIndex()==1:
-            err = tuple([np.sqrt(a[:,1]) for a in rrf])
+            yerr = tuple([np.sqrt(a[:,1]) for a in rrf])
         elif self.ui.referrCB.currentIndex()==2:
-            err = tuple([a[:,1] for a in rrf])
+            yerr = tuple([a[:,1] for a in rrf])
         else:
-            err=tuple([np.ones(a[:,0].shape) for a in rrf])
-            
+            yerr=tuple([np.ones(a[:,0].shape) for a in rrf])
+        
+        # toggle to "vary" if one parameter is selected from the display
+        fit_list = []
+          
         # create a Parameter() object to be fitted with
-        
-        self.refparameter = Parameter()
-        
+        import pdb;pdb.set_trace()
+        self.refparameter = mfit.initParameters(self.refparaname, self.refpara,
+                                                vary=fit_list)
         
         # minimize the residual
         self.refresult=minimize(mfit.ref2min, self.refparameter, 
-                                args=(x,y,yerr),
+                                args=(qz,data,yerr),
                                 kws={'fit':True})
         
-        
         # replace the display with best fit and print out report
-        
+
     def multiErrorCal(self):
         import pdb; pdb.set_trace()
         
