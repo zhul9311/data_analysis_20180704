@@ -991,10 +991,7 @@ class MainWindow (QMainWindow):
             cursor=self.ui.refparaTB.textCursor()
             cursor.setPosition(0)
             self.ui.refparaTB.setTextCursor(cursor)
-           # print self.refresult.params
-            #print self.refresult.params[self.refparaname[-1]].stderr
-            #print self.refparameter[self.refparaname[-1]]
-    
+ 
     def multiRefInit(self):
         
         # selectedreffiles=self.ui.reffileLW.selectedItems()
@@ -1008,8 +1005,6 @@ class MainWindow (QMainWindow):
 
         # initialize the parameter panel with number of datasets
         self.multiRefParInit('ref_multiFit_par.ui',num_data)
-        
-        # create a Parameter() object that contains all the parameters
            
     def multiRefParInit(self,ui_name,ndata): 
         
@@ -1067,11 +1062,66 @@ class MainWindow (QMainWindow):
         # self.mrefpar.clerefconPB.clicked.connect(enter_pdb)
         self.mrefpar.show()
     
+    def updateMultiFitLog(self,ui,result):
+        ui.refChiLE.setText(format(result.redchi, '.3f'))
+        ui.refparaTB.clear()
+        fitinfo='Fitting Paramenters:\n'
+        fitinfo=fitinfo+'Name\tStderr\tMin\tMax\n'
+        selparas.sort()
+        for i in selparas:
+            fitinfo=fitinfo+self.refparaname[i]+'\t'+format(self.refresult.params[self.refparaname[i]].stderr, '.4f')+'\t'+str(self.refpara[i][2])+'\t'+str(self.refpara[i][3])+'\n'
+        for i in range(3):
+            if self.refsyspara[i][1]==True:
+               fitinfo=fitinfo+self.refsysparaname[i]+'\t'+format(self.refresult.params[self.refsysparaname[i]].stderr, '.4f')+'\t'+str(self.refsyspara[i][2])+'\t'+str(self.refsyspara[i][3])+'\n' 
+        fitinfo=fitinfo+'********************************\n'
+        fitinfo=fitinfo+'Fitting Residual:\n'
+        for i in range(len(residual)):
+            fitinfo=fitinfo+format(residual[i][0], '.3f')+'\t'+format(residual[i][1], '.4f')+'\n'
+        self.ui.refparaTB.append(fitinfo)
+        cursor=self.ui.refparaTB.textCursor()
+        cursor.setPosition(0)
+        self.ui.refparaTB.setTextCursor(cursor)
+       
+       
+    def updateMultiParDisp(self,ui,params):
+        
+        # self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
+        ui.cellChanged.disconnect(self.uipdateRefparaVal)
+        
+        p = params.valuesdict()
+        par_table = ui.parTW
+        p['d1'] = 12
+        p['rho1'] = 0.222
+        layers = len([p[x] for x in p if x.startswith('d')])
+        ndata = len([p[x] for x in p if x.startswith('qoff')])
+        
+        # setup display for top,middle and bottom phases
+        tab_top = [['top',p['rho_t'],p['mu_t'],p['sigma0']],]
+        tab_mid = [0] * layers
+        for i in range(layers):
+            l = str(i+1)
+            tab_mid[i] = [p['d'+l],p['rho'+l],p['mu'+l],p['sigma'+l]]
+        tab_bot = [0] * ndata
+        for i in range(ndata):
+            k = str(i+1)
+            tab_bot[i] = ['bottom'+k,p['rho_b'+k],p['qoff'+k],'N/A']
+        
+        # Display the parameter table
+        tab_display = tab_top + tab_mid + tab_bot
+        for i,row in enumerate(tab_display):
+            for j,cell in enumerate(row):
+                par_table.setItem(i,j,QTableWidgetItem(str(cell)))
+
+        ui.cellChanged.connect(self.uipdateRefparaVal)
+        par_table.show()
+        
     def multiFitRef(self):
         try:
             mfit=reload(fit_ref)
         except:
             import fit_ref as mfit
+        
+        # qz, data, yerr = mtfit.readData(files,selection,fit_range = [0:1], yerr_type=0)
         
         # read multiple data set and cut them to fit range
         rrf = [np.loadtxt(self.reffiles[r],comments='#') \
@@ -1096,7 +1146,6 @@ class MainWindow (QMainWindow):
         fit_list = []
           
         # create a Parameter() object to be fitted with
-        import pdb;pdb.set_trace()
         self.refparameter = mfit.initParameters(self.refparaname, self.refpara,
                                                 vary=fit_list)
         
@@ -1105,8 +1154,12 @@ class MainWindow (QMainWindow):
                                 args=(qz,data,yerr),
                                 kws={'fit':True})
         
-        # replace the display with best fit and print out report
-
+        # display the table with best fit and print out report
+        self.updateMultiParDisp(self.mrefpar,self.refresult.params)
+        
+        # printout the fit report
+        self.updateMultiFitLog(self.mrefpar,self.refresult)
+               
     def multiErrorCal(self):
         import pdb; pdb.set_trace()
         
