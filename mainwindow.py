@@ -25,6 +25,7 @@ import periodictable
 from periodictable import *
 import copy
 import pdb
+import fit_ref as mfit   
 
 (Ui_MainWindow, QMainWindow) = uic.loadUiType('mainwindow.ui')
 
@@ -321,7 +322,7 @@ class MainWindow (QMainWindow):
         self.ui.reffitfileLW.clear()
         self.updateRefFitFile()
         
-    def updateRefPlot(self): #update the plot in the ref plotwidget
+    def updateRefPlot(self,multi=False): #update the plot in the ref plotwidget
         self.ui.refPW.canvas.ax.clear()
         self.ui.refPW.canvas.ax.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
         self.ui.refPW.canvas.ax.set_ylabel('Normalized Reflectivity')
@@ -333,8 +334,8 @@ class MainWindow (QMainWindow):
             for i in range(len(self.selectedreffitfiles_rows)):
                 data1=np.loadtxt(str(self.reffitfiles[self.selectedreffitfiles_rows[i]]), comments='#')
                 self.ui.refPW.canvas.ax.errorbar(data1[:,0]*self.reffitscale[i][0]+self.reffitscale[i][1],data1[:,1]*self.reffitscale[i][2]+self.reffitscale[i][3],fmt='-',label='#'+str(self.selectedreffitfiles_rows[i]+1))
-        if  self.ui.calrefCB.checkState()!=0:
-                self.ui.refPW.canvas.ax.errorbar(np.array(self.refcal)[:,0],np.array(self.refcal)[:,1],fmt='-', label='cal')
+        if (self.ui.calrefCB.checkState()!=0) & (multi==False):
+            self.ui.refPW.canvas.ax.errorbar(np.array(self.refcal)[:,0],np.array(self.refcal)[:,1],fmt='-', label='cal')
         if self.ui.reflegendCB.checkState()!=0:
             self.ui.refPW.canvas.ax.legend(loc=self.ui.reflegendlocCoB.currentIndex()+1,frameon=False,scatterpoints=0,numpoints=1)
         if self.ui.reflogyCB.checkState()!=0:
@@ -896,102 +897,104 @@ class MainWindow (QMainWindow):
         self.refsyspara[2][0]=float(self.ui.refqresLE.text())
         
     def fitRef(self):
-        import pdb; pdb.set_trace()
-        self.getRefParaVal()
-        index=self.ui.refparTW.selectionModel().selectedIndexes()
-        row=self.ui.refparTW.rowCount()
-        selrows=[self.ui.refparTW.row(self.ui.refparTW.itemFromIndex(index[i])) for i in range(len(index))]
-        selcols=[self.ui.refparTW.column(self.ui.refparTW.itemFromIndex(index[i])) for i in range(len(index))]
-        selparas=[]
-        for i in range(len(selrows)):  #get selected parameters
-            if selrows[i]!=row-1:
-                selparas.append(selrows[i]*4+selcols[i]-1)
+        try:
+            self.getRefParaVal()
+            index=self.ui.refparTW.selectionModel().selectedIndexes()
+            row=self.ui.refparTW.rowCount()
+            selrows=[self.ui.refparTW.row(self.ui.refparTW.itemFromIndex(index[i])) for i in range(len(index))]
+            selcols=[self.ui.refparTW.column(self.ui.refparTW.itemFromIndex(index[i])) for i in range(len(index))]
+            selparas=[]
+            for i in range(len(selrows)):  #get selected parameters
+                if selrows[i]!=row-1:
+                    selparas.append(selrows[i]*4+selcols[i]-1)
+                else:
+                    selparas.append(selrows[i]*4+selcols[i]-2)
+           # print selparas
+            for i in range(len(self.refpara)):  #set selected parameters to be varied
+                if i in selparas:
+                    self.refpara[i][1]=True
+                else:
+                    self.refpara[i][1]=False
+            #print self.refpara
+            if self.ui.refqoffCB.checkState()!=0:   #set selected system paramenters to be varied
+                self.refsyspara[0][1]=True
             else:
-                selparas.append(selrows[i]*4+selcols[i]-2)
-       # print selparas
-        for i in range(len(self.refpara)):  #set selected parameters to be varied
-            if i in selparas:
-                self.refpara[i][1]=True
+                self.refsyspara[0][1]=False
+            if self.ui.refyscaleCB.checkState()!=0:  
+                self.refsyspara[1][1]=True
             else:
-                self.refpara[i][1]=False
-        #print self.refpara
-        if self.ui.refqoffCB.checkState()!=0:   #set selected system paramenters to be varied
-            self.refsyspara[0][1]=True
-        else:
-            self.refsyspara[0][1]=False
-        if self.ui.refyscaleCB.checkState()!=0:  
-            self.refsyspara[1][1]=True
-        else:
-            self.refsyspara[1][1]=False
-        if self.ui.refqresCB.checkState()!=0:  
-            self.refsyspara[2][1]=True
-        else:
-            self.refsyspara[2][1]=False
-       # print self.refsyspara
-        self.refparameter=Parameters()
-        for i in range(len(self.refpara)):
-            self.refparameter.add(self.refparaname[i], value=self.refpara[i][0],vary=self.refpara[i][1],min=self.refpara[i][2],max=self.refpara[i][3])
-        for i in range(len(self.refsysparaname)):
-            self.refparameter.add(self.refsysparaname[i], value=self.refsyspara[i][0],vary=self.refsyspara[i][1],min=self.refsyspara[i][2],max=self.refsyspara[i][3])
+                self.refsyspara[1][1]=False
+            if self.ui.refqresCB.checkState()!=0:  
+                self.refsyspara[2][1]=True
+            else:
+                self.refsyspara[2][1]=False
+           # print self.refsyspara
+            self.refparameter=Parameters()
+            for i in range(len(self.refpara)):
+                self.refparameter.add(self.refparaname[i], value=self.refpara[i][0],vary=self.refpara[i][1],min=self.refpara[i][2],max=self.refpara[i][3])
+            for i in range(len(self.refsysparaname)):
+                self.refparameter.add(self.refsysparaname[i], value=self.refsyspara[i][0],vary=self.refsyspara[i][1],min=self.refsyspara[i][2],max=self.refsyspara[i][3])
        
-        if  len(self.selectedreffiles_rows)!=1: #plot ref files
-            self.messageBox("Please select only one set of data for fitting!")
-        else:
-            data=np.loadtxt(str(self.reffiles[self.selectedreffiles_rows[0]]), comments='#')
-            ini=max(float(str(self.ui.reffitranLE.text()).split(':')[0]),data[0][0])
-            fin=min(float(str(self.ui.reffitranLE.text()).split(':')[1]),data[-1][0])
-            data1=data[np.where(np.logical_and(data[:,0]>=ini,data[:,0]<=fin))]
-            x=data1[:,0]
-            y=data1[:,1]
-            if self.ui.referrCB.currentIndex()==0:
-                yerr=data1[:,2]
-            elif self.ui.referrCB.currentIndex()==1:
-                yerr=np.sqrt(y)
-            elif self.ui.referrCB.currentIndex()==2:
-                yerr=y
+            if  len(self.selectedreffiles_rows)!=1: #plot ref files
+                self.messageBox("Please select only one set of data for fitting!")
             else:
-                yerr=np.ones_like(x)
+                data=np.loadtxt(str(self.reffiles[self.selectedreffiles_rows[0]]), comments='#')
+                ini=max(float(str(self.ui.reffitranLE.text()).split(':')[0]),data[0][0])
+                fin=min(float(str(self.ui.reffitranLE.text()).split(':')[1]),data[-1][0])
+                data1=data[np.where(np.logical_and(data[:,0]>=ini,data[:,0]<=fin))]
+                x=data1[:,0]
+                y=data1[:,1]
+                if self.ui.referrCB.currentIndex()==0:
+                    yerr=data1[:,2]
+                elif self.ui.referrCB.currentIndex()==1:
+                    yerr=np.sqrt(y)
+                elif self.ui.referrCB.currentIndex()==2:
+                    yerr=y
+                else:
+                    yerr=np.ones_like(x)
                 
-            self.refresult=minimize(self.ref2min, self.refparameter, args=(x,y,yerr))
+                self.refresult=minimize(self.ref2min, self.refparameter, args=(x,y,yerr))
 
-            print(fit_report(self.refresult))
-            residual=np.vstack((x,self.refresult.residual)).T
+                print(fit_report(self.refresult))
+                residual=np.vstack((x,self.refresult.residual)).T
 
-            self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
-            if self.ui.refroughCB.checkState()!=0: #enforce the roughness to be same if set
-                for i in range(1,row-1):
-                    self.refresult.params[self.refparaname[4*i+2]].value=self.refresult.params[self.refparaname[2]].value
-            for i in range(len(self.refparaname)-2): #put the best values except the bottom phase in the table 
-                cell=divmod(i+1,4)  #get the cell index for each parameter
-               # print str(result.params[self.refparaname[i]].value)
-                self.ui.refparTW.setItem(cell[0],cell[1],QTableWidgetItem(format(self.refresult.params[self.refparaname[i]].value,'.4f')))
-            self.ui.refparTW.setItem(row-1,1,QTableWidgetItem(format(self.refresult.params[self.refparaname[-2]].value, '.4f'))) # put the best values for the bottom phase
-            self.ui.refparTW.setItem(row-1,2,QTableWidgetItem(format(self.refresult.params[self.refparaname[-1]].value, '.4f')))
-            self.ui.refqoffLE.setText(format(self.refresult.params[self.refsysparaname[0]].value, '.6f'))  #put the best sys parameter values 
-            self.ui.refyscaleLE.setText(format(self.refresult.params[self.refsysparaname[1]].value, '.3f'))
-            self.ui.refqresLE.setText(format(self.refresult.params[self.refsysparaname[2]].value, '.6f'))
-            self.connect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
-            self.ui.calrefCB.setCheckState(2)
-            self.updateRefCal()
-            self.ui.refChiLE.setText(format(self.refresult.redchi, '.3f'))
-            self.ui.refparaTB.clear()
-            fitinfo='Fitting Paramenters:\n'
-            fitinfo=fitinfo+'Name\tStderr\tMin\tMax\n'
-            selparas.sort()
-            for i in selparas:
-                fitinfo=fitinfo+self.refparaname[i]+'\t'+format(self.refresult.params[self.refparaname[i]].stderr, '.4f')+'\t'+str(self.refpara[i][2])+'\t'+str(self.refpara[i][3])+'\n'
-            for i in range(3):
-                if self.refsyspara[i][1]==True:
-                   fitinfo=fitinfo+self.refsysparaname[i]+'\t'+format(self.refresult.params[self.refsysparaname[i]].stderr, '.4f')+'\t'+str(self.refsyspara[i][2])+'\t'+str(self.refsyspara[i][3])+'\n' 
-            fitinfo=fitinfo+'********************************\n'
-            fitinfo=fitinfo+'Fitting Residual:\n'
-            for i in range(len(residual)):
-                fitinfo=fitinfo+format(residual[i][0], '.3f')+'\t'+format(residual[i][1], '.4f')+'\n'
-            self.ui.refparaTB.append(fitinfo)
-            cursor=self.ui.refparaTB.textCursor()
-            cursor.setPosition(0)
-            self.ui.refparaTB.setTextCursor(cursor)
- 
+                self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
+                if self.ui.refroughCB.checkState()!=0: #enforce the roughness to be same if set
+                    for i in range(1,row-1):
+                        self.refresult.params[self.refparaname[4*i+2]].value=self.refresult.params[self.refparaname[2]].value
+                for i in range(len(self.refparaname)-2): #put the best values except the bottom phase in the table 
+                    cell=divmod(i+1,4)  #get the cell index for each parameter
+                   # print str(result.params[self.refparaname[i]].value)
+                    self.ui.refparTW.setItem(cell[0],cell[1],QTableWidgetItem(format(self.refresult.params[self.refparaname[i]].value,'.4f')))
+                self.ui.refparTW.setItem(row-1,1,QTableWidgetItem(format(self.refresult.params[self.refparaname[-2]].value, '.4f'))) # put the best values for the bottom phase
+                self.ui.refparTW.setItem(row-1,2,QTableWidgetItem(format(self.refresult.params[self.refparaname[-1]].value, '.4f')))
+                self.ui.refqoffLE.setText(format(self.refresult.params[self.refsysparaname[0]].value, '.6f'))  #put the best sys parameter values 
+                self.ui.refyscaleLE.setText(format(self.refresult.params[self.refsysparaname[1]].value, '.3f'))
+                self.ui.refqresLE.setText(format(self.refresult.params[self.refsysparaname[2]].value, '.6f'))
+                self.connect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
+                self.ui.calrefCB.setCheckState(2)
+                self.updateRefCal()
+                self.ui.refChiLE.setText(format(self.refresult.redchi, '.3f'))
+                self.ui.refparaTB.clear()
+                fitinfo='Fitting Paramenters:\n'
+                fitinfo=fitinfo+'Name\tStderr\tMin\tMax\n'
+                selparas.sort()
+                for i in selparas:
+                    fitinfo=fitinfo+self.refparaname[i]+'\t'+format(self.refresult.params[self.refparaname[i]].stderr, '.4f')+'\t'+str(self.refpara[i][2])+'\t'+str(self.refpara[i][3])+'\n'
+                for i in range(3):
+                    if self.refsyspara[i][1]==True:
+                       fitinfo=fitinfo+self.refsysparaname[i]+'\t'+format(self.refresult.params[self.refsysparaname[i]].stderr, '.4f')+'\t'+str(self.refsyspara[i][2])+'\t'+str(self.refsyspara[i][3])+'\n' 
+                fitinfo=fitinfo+'********************************\n'
+                fitinfo=fitinfo+'Fitting Residual:\n'
+                for i in range(len(residual)):
+                    fitinfo=fitinfo+format(residual[i][0], '.3f')+'\t'+format(residual[i][1], '.4f')+'\n'
+                self.ui.refparaTB.append(fitinfo)
+                cursor=self.ui.refparaTB.textCursor()
+                cursor.setPosition(0)
+                self.ui.refparaTB.setTextCursor(cursor)
+        except IndexError:
+            import pdb; pdb.set_trace()
+    
     def multiRefInit(self):
         
         # selectedreffiles=self.ui.reffileLW.selectedItems()
@@ -1054,38 +1057,43 @@ class MainWindow (QMainWindow):
         self.refpara=[0] * len(tab_flat)
         for i,value in enumerate(tab_flat):
             self.refpara[i] = [value, False, None, None]
+            if self.refparaname[i].startswith('rho') or \
+               self.refparaname[i].startswith('sigma') or \
+               self.refparaname[i].startswith('d') or \
+               self.refparaname[i].startswith('mu'):
+               self.refpara[i][2] = 0. # set lower limit for the paras above.
             
         # connect functions 
         self.mrefpar.fitPB.clicked.connect(self.multiFitRef)
         self.mrefpar.errcalPB.clicked.connect(self.multiErrorCal)
-        # def enter_pdb():import pdb;pdb.set_trace()
-        # self.mrefpar.clerefconPB.clicked.connect(enter_pdb)
+        self.mrefpar.parTW.cellChanged.connect(self.updateMultiPlot)
         self.mrefpar.show()
-    
-    def updateMultiFitLog(self,ui,result):
-        ui.refChiLE.setText(format(result.redchi, '.3f'))
-        ui.refparaTB.clear()
-        fitinfo='Fitting Paramenters:\n'
-        fitinfo=fitinfo+'Name\tStderr\tMin\tMax\n'
-        selparas.sort()
-        for i in selparas:
-            fitinfo=fitinfo+self.refparaname[i]+'\t'+format(self.refresult.params[self.refparaname[i]].stderr, '.4f')+'\t'+str(self.refpara[i][2])+'\t'+str(self.refpara[i][3])+'\n'
-        for i in range(3):
-            if self.refsyspara[i][1]==True:
-               fitinfo=fitinfo+self.refsysparaname[i]+'\t'+format(self.refresult.params[self.refsysparaname[i]].stderr, '.4f')+'\t'+str(self.refsyspara[i][2])+'\t'+str(self.refsyspara[i][3])+'\n' 
-        fitinfo=fitinfo+'********************************\n'
-        fitinfo=fitinfo+'Fitting Residual:\n'
-        for i in range(len(residual)):
-            fitinfo=fitinfo+format(residual[i][0], '.3f')+'\t'+format(residual[i][1], '.4f')+'\n'
-        self.ui.refparaTB.append(fitinfo)
-        cursor=self.ui.refparaTB.textCursor()
-        cursor.setPosition(0)
-        self.ui.refparaTB.setTextCursor(cursor)
        
-    def updateMultiParDisp(self,ui,params):
+    def multiFitRef(self):
         
+        # read multiple data set and cut them to fit range
+        data = mtfit.readData(ui, self.reffiles,self.selectedreffiles_rows, 
+                              err_type=self.ui.referrCB.currentIndex())
+        
+        # update parameter list and create a Parameter() object to fit
+        self.updateMultiPlot(plot=False)
+        
+        # minimize the residual and calculate the fit with best fit para's.
+        self.refresult=minimize(mfit.ref2min, self.refparameter, 
+                                args=data,
+                                kws={'fit':True})
+
+        # display the table with best fit and print out report
+        self.updateMultiParDisp(self.mrefpar,self.refresult.params)
+             
+        # update plot
+
+        self.updateMultiPlot()
+        
+    def updateMultiParDisp(self,ui,params):
+        '''Update parameter table according to latest fitting parameters'''
         # self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
-        ui.parTW.cellChanged.disconnect(self.uipdateRefparaVal)
+        ui.parTW.cellChanged.disconnect(self.updateRefParaVal)
         
         p = params.valuesdict()
         par_table = ui.parTW
@@ -1111,51 +1119,34 @@ class MainWindow (QMainWindow):
             for j,cell in enumerate(row):
                 par_table.setItem(i,j,QTableWidgetItem(str(cell)))
 
-        ui.cellChanged.connect(self.uipdateRefparaVal)
+        ui.parTW.cellChanged.connect(self.updateRefParaVal)
         par_table.show()
         
-    def multiFitRef(self):
-        try:
-            mfit=reload(fit_ref)
-        except:
-            import fit_ref as mfit
+        # Print out the report
+        print '\n\n'
+        report_fit(self.refresult)
+        print '\n\n'
         
-        # qz, data, yerr = mtfit.readData(files,selection,fit_range = [0:1], yerr_type=0)
+    def updateMultiPlot(self,plot=True):
+        '''Update Fitting parameters and plot according to the latest table'''
         
-        # read multiple data set and cut them to fit range
-        rrf = [np.loadtxt(self.reffiles[r],comments='#') \
-               for r in self.selectedreffiles_rows]
-        fit_range = \
-            [float(i) for i in str(self.ui.reffitranLE.text()).split(':')]
-        for i,d in enumerate(rrf):
-            select = (d[:,0]>=fit_range[0])&(d[:,0]<=fit_range[1])
-            rrf[i] = d[select]
-        qz = tuple([a[:,0] for a in rrf]) # tuple: (qz1,qz2,...)
-        data = tuple([a[:,1] for a in rrf]) # tuple: (data1,data2,...)
-        if self.ui.referrCB.currentIndex()==0: # tuple: (err1,err2,...)
-            yerr = tuple([a[:,2] for a in rrf])
-        elif self.ui.referrCB.currentIndex()==1:
-            yerr = tuple([np.sqrt(a[:,1]) for a in rrf])
-        elif self.ui.referrCB.currentIndex()==2:
-            yerr = tuple([a[:,1] for a in rrf])
-        else:
-            yerr=tuple([np.ones(a[:,0].shape) for a in rrf])
+        # update parameter list according to the newest table
+        self.refpara = mfit.updateParameters(self.mrefpar,self.refparaname,
+                                             self.refpara)
         
         # create a Parameter() object to be fitted with
-        fit_list = mfit.selectedItem(ui,self.refparaname) # if fit, then vary
-        self.refparameter = mfit.initParameters(self.refparaname, self.refpara,
-                                                vary=fit_list)
-        
-        # minimize the residual
-        self.refresult=minimize(mfit.ref2min, self.refparameter, 
-                                args=(qz,data,yerr),
-                                kws={'fit':True})
-        
-        # display the table with best fit and print out report
-        self.updateMultiParDisp(self.mrefpar,self.refresult.params)
-        
-        # printout the fit report
-        self.updateMultiFitLog(self.mrefpar,self.refresult)
+        self.refparameter = mfit.initParameters(self.refparaname, self.refpara)
+
+        # update plot if input data not None
+        if plot==True:
+            self.updateRefPlot(multi=True) # update plot for selected data
+            fit = mfit.ref2min(self.refparameter,qz,data,yerr,fit=False)
+            
+            ref_plot = self.ui.refPW
+            if  self.mrefpar.calrefCB.checkState()!=0:
+                for i in range(ndata):
+                    ref_plot.canvas.ax.plot(qz[i],fit[i],ls='-',label=str(i))
+            ref_plot.canvas.draw()
                
     def multiErrorCal(self):
         import pdb; pdb.set_trace()
