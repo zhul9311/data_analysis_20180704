@@ -343,6 +343,42 @@ class MainWindow (QMainWindow):
         else:
             self.ui.refPW.canvas.ax.set_yscale('linear')
         self.ui.refPW.canvas.draw()
+    
+    def updateRefPlot(self,multi=False): #update the plot in the ref plotwidget
+        
+        ax1 = self.ui.refPW.canvas.ax
+        ax1.clear()
+        ax1.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
+        ax1.set_ylabel('Normalized Reflectivity')
+        
+        if  len(self.selectedreffiles_rows)!=0: # plot ref data
+            data = mfit.readData(self.reffiles,
+                                 self.selectedreffiles_rows,
+                                 self.multifit_range,
+                                 err_type=self.ui.referrCB.currentIndex())
+            for i in range(len(data)):
+                ax1.errorbar(data[i][0],data[i][1],yerr=data[i][2], 'o',
+                             label='#'+str(self.selectedreffiles_rows[i]+1)))
+        
+        if  len(self.selectedreffitfiles_rows)!=0:  # plot fit data
+            fit = mfit.readData(self.reffitfiles,
+                                self.selectedreffitfiles_rows,
+                                None,
+                                err_type=self.ui.referrCB.currentIndex())
+            for i in range(len(fit)):
+                ax1.plot(fit[i][0],fit[i][1],'-',
+                         label='#'+str(self.selectedreffitfiles_rows[i]+1)))
+            
+        if self.ui.reflegendCB.checkState()!=0:
+            ax1.legend(loc=self.ui.reflegendlocCoB.currentIndex()+1,
+                       frameon=False,scatterpoints=0,numpoints=1)
+
+        if self.ui.reflogyCB.checkState()!=0:
+            ax1.set_yscale('log')
+        else:
+            ax1.set_yscale('linear')
+
+        self.ui.refPW.canvas.draw()
         
     def setRefPlotScale(self): #set the scale of each data in the ref plot
         if len(self.selectedreffiles_rows)+len(self.selectedreffitfiles_rows)==0:
@@ -1040,6 +1076,7 @@ class MainWindow (QMainWindow):
             kind = str(i+1)
             name_bot[i] = ['rho_b'+kind,'qoff'+kind]
             tab_bot[i] = ['bottom'+kind,0.333+0.02*i,0,'N/A']
+
         
         # Initialize parameter names in self.refparaname
         self.refparaname = \
@@ -1067,33 +1104,35 @@ class MainWindow (QMainWindow):
         self.mrefpar.fitPB.clicked.connect(self.multiFitRef)
         self.mrefpar.errcalPB.clicked.connect(self.multiErrorCal)
         self.mrefpar.parTW.cellChanged.connect(self.updateMultiPlot)
+        
         self.mrefpar.show()
        
     def multiFitRef(self):
         
-        # read multiple data set and cut them to fit range
-        data = mtfit.readData(ui, self.reffiles,self.selectedreffiles_rows, 
-                              err_type=self.ui.referrCB.currentIndex())
-        
         # update parameter list and create a Parameter() object to fit
-        self.updateMultiPlot(plot=False)
+        self.updateMultiPlot()
+        
+        # read multiple data set and cut them to fit range
+        self.multiref_data = \
+            mfit.readData(self.reffiles,
+                          self.selectedreffiles_rows,
+                          self.multifit_range,
+                          err_type=self.ui.referrCB.currentIndex())
         
         # minimize the residual and calculate the fit with best fit para's.
         self.refresult=minimize(mfit.ref2min, self.refparameter, 
-                                args=data,
+                                args=self.multiref_data,
                                 kws={'fit':True})
 
         # display the table with best fit and print out report
         self.updateMultiParDisp(self.mrefpar,self.refresult.params)
              
         # update plot
-
         self.updateMultiPlot()
         
     def updateMultiParDisp(self,ui,params):
         '''Update parameter table according to latest fitting parameters'''
-        # self.disconnect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self.updateRefParaVal)
-        ui.parTW.cellChanged.disconnect(self.updateRefParaVal)
+        ui.parTW.cellChanged.disconnect(self.updateMultiPlot)
         
         p = params.valuesdict()
         par_table = ui.parTW
@@ -1119,7 +1158,7 @@ class MainWindow (QMainWindow):
             for j,cell in enumerate(row):
                 par_table.setItem(i,j,QTableWidgetItem(str(cell)))
 
-        ui.parTW.cellChanged.connect(self.updateRefParaVal)
+        ui.parTW.cellChanged.connect(self.updateMultiPlot)
         par_table.show()
         
         # Print out the report
@@ -1127,31 +1166,48 @@ class MainWindow (QMainWindow):
         report_fit(self.refresult)
         print '\n\n'
         
-    def updateMultiPlot(self,plot=True):
-        '''Update Fitting parameters and plot according to the latest table'''
-        
+    def updateMultiPlot(self):
+        ''' It does the following three things:
+                Update Fitting parameters.
+                Update data plot if plot=True
+                Update fit plot according to the parameter if plot=True'''
+        # initialize fit_range
+        self.multifit_range = \
+            [float(i) for i in str(self.mrefpar.fitranLE.text()).split(':')]
+            
         # update parameter list according to the newest table
         self.refpara = mfit.updateParameters(self.mrefpar,self.refparaname,
                                              self.refpara)
         
         # create a Parameter() object to be fitted with
         self.refparameter = mfit.initParameters(self.refparaname, self.refpara)
-
-        # update plot if input data not None
-        if plot==True:
-            self.updateRefPlot(multi=True) # update plot for selected data
-            fit = mfit.ref2min(self.refparameter,qz,data,yerr,fit=False)
+        
+        ndata = len([p for p in self.refparaname if p.startswith("rho_b")])
+        
+        # update plot if input data not None 
+        self.updateRefPlot(multi=True) # update plot for selected data
             
-            ref_plot = self.ui.refPW
-            if  self.mrefpar.calrefCB.checkState()!=0:
+        if self.mrefpar.calrefCB.checkState()!=0:
+            try:
+                fit_range = self.multifit_range
+                qz = np.linspace(fit_range[0],fit_range[1],100)
+                qz_all = (qz,) * ndata # tuple of qz for all data sets
+                y, yerr = None, None
+                fit = mfit.ref2min(self.refparameter,qz_all,y,yerr,fit=False)
+
+                ax1 = self.ui.refPW.canvas.ax
                 for i in range(ndata):
-                    ref_plot.canvas.ax.plot(qz[i],fit[i],ls='-',label=str(i))
-            ref_plot.canvas.draw()
-               
+                    ax1.plot(qz_all[i],fit[i],ls='-',label=str(i))
+                self.ui.refPW.canvas.draw()
+            except: 
+                print "please check calculated reflectivity."
+                raise ValueError
+                           
     def multiErrorCal(self):
         import pdb; pdb.set_trace()
         
-    def ref2min(self, params, x, y, yerr): #residuel for ref fitting
+    def ref2min(self, params, x, y, yerr): 
+        #residuel for ref fitting
         row=self.ui.refparTW.rowCount()
         d=[params[self.refparaname[i*4+3]].value for i in range(row-2)]
         rho=[params[self.refparaname[i*4]].value for i in range(row-1)]
