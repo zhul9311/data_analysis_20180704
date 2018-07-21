@@ -321,53 +321,36 @@ class MainWindow (QMainWindow):
             self.reffitfiles.pop(self.ui.reffitfileLW.row(item))
         self.ui.reffitfileLW.clear()
         self.updateRefFitFile()
-        
-    def updateRefPlot(self,multi=False): #update the plot in the ref plotwidget
-        self.ui.refPW.canvas.ax.clear()
-        self.ui.refPW.canvas.ax.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
-        self.ui.refPW.canvas.ax.set_ylabel('Normalized Reflectivity')
-        if  len(self.selectedreffiles_rows)!=0: #plot ref files
-            for i in range(len(self.selectedreffiles_rows)):
-                data1=np.loadtxt(str(self.reffiles[self.selectedreffiles_rows[i]]), comments='#')
-                self.ui.refPW.canvas.ax.errorbar(data1[:,0]*self.refscale[i][0]+self.refscale[i][1],data1[:,1]*self.refscale[i][2]+self.refscale[i][3],data1[:,2]*self.refscale[i][2],fmt='o',label='#'+str(self.selectedreffiles_rows[i]+1))
-        if  len(self.selectedreffitfiles_rows)!=0: #plot ref fit files
-            for i in range(len(self.selectedreffitfiles_rows)):
-                data1=np.loadtxt(str(self.reffitfiles[self.selectedreffitfiles_rows[i]]), comments='#')
-                self.ui.refPW.canvas.ax.errorbar(data1[:,0]*self.reffitscale[i][0]+self.reffitscale[i][1],data1[:,1]*self.reffitscale[i][2]+self.reffitscale[i][3],fmt='-',label='#'+str(self.selectedreffitfiles_rows[i]+1))
-        if (self.ui.calrefCB.checkState()!=0) & (multi==False):
-            self.ui.refPW.canvas.ax.errorbar(np.array(self.refcal)[:,0],np.array(self.refcal)[:,1],fmt='-', label='cal')
-        if self.ui.reflegendCB.checkState()!=0:
-            self.ui.refPW.canvas.ax.legend(loc=self.ui.reflegendlocCoB.currentIndex()+1,frameon=False,scatterpoints=0,numpoints=1)
-        if self.ui.reflogyCB.checkState()!=0:
-            self.ui.refPW.canvas.ax.set_yscale('log')
-        else:
-            self.ui.refPW.canvas.ax.set_yscale('linear')
-        self.ui.refPW.canvas.draw()
     
-    def updateRefPlot(self,multi=False): #update the plot in the ref plotwidget
+    def updateRefPlot(self): #update the plot in the ref plotwidget
         
         ax1 = self.ui.refPW.canvas.ax
         ax1.clear()
         ax1.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
         ax1.set_ylabel('Normalized Reflectivity')
         
-        if  len(self.selectedreffiles_rows)!=0: # plot ref data
+        color_list = ['r','b','g','c','m','y']
+        
+        ndata = len(self.selectedreffiles_rows)
+        if  ndata != 0: # plot ref data
             data = mfit.readData(self.reffiles,
                                  self.selectedreffiles_rows,
-                                 self.multifit_range,
+                                 None,
                                  err_type=self.ui.referrCB.currentIndex())
-            for i in range(len(data)):
-                ax1.errorbar(data[i][0],data[i][1],yerr=data[i][2], 'o',
-                             label='#'+str(self.selectedreffiles_rows[i]+1)))
+            for i in range(ndata):
+                ax1.errorbar(data[0][i],data[1][i],yerr=data[2][i], 
+                             marker='o', ls = '', color=color_list[i],
+                             label='#'+str(self.selectedreffiles_rows[i]+1))
         
-        if  len(self.selectedreffitfiles_rows)!=0:  # plot fit data
+        nfit = len(self.selectedreffitfiles_rows)
+        if  nfit != 0:  # plot fit data
             fit = mfit.readData(self.reffitfiles,
                                 self.selectedreffitfiles_rows,
                                 None,
                                 err_type=self.ui.referrCB.currentIndex())
-            for i in range(len(fit)):
-                ax1.plot(fit[i][0],fit[i][1],'-',
-                         label='#'+str(self.selectedreffitfiles_rows[i]+1)))
+            for i in range(nfit):
+                ax1.plot(fit[0][1],fit[1][i],ls='-',color=color_list[i],
+                         label='#'+str(self.selectedreffitfiles_rows[i]+1))
             
         if self.ui.reflegendCB.checkState()!=0:
             ax1.legend(loc=self.ui.reflegendlocCoB.currentIndex()+1,
@@ -1108,7 +1091,7 @@ class MainWindow (QMainWindow):
         self.mrefpar.show()
        
     def multiFitRef(self):
-        
+        import pdb; pdb.set_trace()
         # update parameter list and create a Parameter() object to fit
         self.updateMultiPlot()
         
@@ -1122,7 +1105,8 @@ class MainWindow (QMainWindow):
         # minimize the residual and calculate the fit with best fit para's.
         self.refresult=minimize(mfit.ref2min, self.refparameter, 
                                 args=self.multiref_data,
-                                kws={'fit':True})
+                                kws={'fit':True},
+                                iter_cb=mfit.iterCallBack)
 
         # display the table with best fit and print out report
         self.updateMultiParDisp(self.mrefpar,self.refresult.params)
@@ -1136,8 +1120,6 @@ class MainWindow (QMainWindow):
         
         p = params.valuesdict()
         par_table = ui.parTW
-        p['d1'] = 12
-        p['rho1'] = 0.222
         layers = len([p[x] for x in p if x.startswith('d')])
         ndata = len([p[x] for x in p if x.startswith('qoff')])
         
@@ -1167,7 +1149,7 @@ class MainWindow (QMainWindow):
         print '\n\n'
         
     def updateMultiPlot(self):
-        ''' It does the following three things:
+        ''' It does three things:
                 Update Fitting parameters.
                 Update data plot if plot=True
                 Update fit plot according to the parameter if plot=True'''
@@ -1185,7 +1167,7 @@ class MainWindow (QMainWindow):
         ndata = len([p for p in self.refparaname if p.startswith("rho_b")])
         
         # update plot if input data not None 
-        self.updateRefPlot(multi=True) # update plot for selected data
+        self.updateRefPlot() # update plot for selected data
             
         if self.mrefpar.calrefCB.checkState()!=0:
             try:
@@ -1195,9 +1177,11 @@ class MainWindow (QMainWindow):
                 y, yerr = None, None
                 fit = mfit.ref2min(self.refparameter,qz_all,y,yerr,fit=False)
 
+                color_list = ['r','b','g','c','m','y']
                 ax1 = self.ui.refPW.canvas.ax
                 for i in range(ndata):
-                    ax1.plot(qz_all[i],fit[i],ls='-',label=str(i))
+                    ax1.plot(qz_all[i],fit[i],ls='-',label=str(i),
+                             color=color_list[i])
                 self.ui.refPW.canvas.draw()
             except: 
                 print "please check calculated reflectivity."
