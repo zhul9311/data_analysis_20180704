@@ -1110,7 +1110,11 @@ class MainWindow (QMainWindow):
 
         # display the table with best fit and print out report
         self.updateMultiParDisp(self.mrefpar,self.refresult.params)
-             
+
+        print '\n\n'
+        report_fit(self.refresult)
+        print '\n\n'
+        
         # update plot
         self.updateMultiPlot()
         
@@ -1142,11 +1146,6 @@ class MainWindow (QMainWindow):
 
         ui.parTW.cellChanged.connect(self.updateMultiPlot)
         par_table.show()
-        
-        # Print out the report
-        print '\n\n'
-        report_fit(self.refresult)
-        print '\n\n'
         
     def updateMultiPlot(self):
         ''' It does three things:
@@ -1188,8 +1187,218 @@ class MainWindow (QMainWindow):
                 raise ValueError
                            
     def multiErrorCal(self):
+        
+        referr_pname_to_fit_num = 0
+        self.index_dict = mfit.name2index(self.refparaname,reverse=True)
+        
+        
+        try:
+            sel_item = self.mrefpar.parTW.selectionModel().selectedIndexes()
+            # only one parameter is allowed to be selected
+            if len(sel_item)!=1: 
+                raise ValueError
+            else:
+                item = sel_item[0]
+                selected_index = (item.row(),item.column())
+                self.referr_name = self.index_dict[selected_index]
+                self.errcal_index = self.refparaname.index(self.referr_name)
+                self.referr_para = self.refpara[self.errcal_index]
+        except ValueError:
+            print "\n\nDid u pick the right number of parameters to fit?\n\n"
+            for index in index_dict:
+                row, col = index
+                self.mrefpar.parTW.clearSelection() # clear all
+            raise
+        
+        self.referr1=uic.loadUi('err1.ui',QDialog(self))
+        self.referr1.label.setText('Uncertainty Calculation for Parameter:'
+                                    + self.referr_name)
+        
+        
+        # the length of left and right half of range for the chosen values.
+        half_range_to_fit = abs(self.referr_para[0]*0.2)
+        self.referr1.bestvalLE.setText(format(self.referr_para[0], '.2e'))
+        self.referr1.leftLimitLE.setText(  # set left limit
+            format((self.referr_para[0] - half_range_to_fit), '.2e'))
+        self.referr1.rightLimitLE.setText( # set right limit
+            format((self.referr_para[0] + half_range_to_fit), '.2e'))
+            
+        self.referr1.numIntervalLE.setText(format(10  ,'d'))
+        
+        # connect the pushbutton to next step
+        self.referr1.cancelPB.clicked.connect( \
+            lambda x: self.referr1.close())
+        self.referr1.nextPB.clicked.connect(self.multiErrorPara)
+        self.referr1.show() 
+    
+    def multiErrorPara(self):
+
         import pdb; pdb.set_trace()
         
+        # calculate a list of values the parameter should take where the chisq is calculated.
+        self.referr_best_value = float(self.referr1.bestvalLE.text())
+        self.referr_left_limit = float(self.referr1.leftLimitLE.text())
+        self.referr_right_limit = float(self.referr1.rightLimitLE.text())
+        self.referr_num_points = int(self.referr1.numIntervalLE.text())+1
+
+        self.referr1.close()
+        
+        # append the fittted value for that parameter for displaying that
+        # value in the chisq plot as the red dot.
+        self.referr_fit_range = np.append(self.referr_best_value,
+                                          np.linspace(self.referr_left_limit,
+                                                      self.referr_right_limit,
+                                                      self.referr_num_points))
+        self.referr_chisq_list = np.zeros(self.referr_fit_range.shape)
+        
+        # automatically toggle the state of fiting and fixed parameters
+        self.referr_para[1] = False # it shouldn't be fitted
+        for i in range(len(self.refpara)) if i!=self.referr_index:
+            self.refpara[i][1] = True # vary is on for any other parameters
+        
+        # update parameter list according to the newest table
+        self.refpara = mfit.updateParameters(self.mrefpar,self.refparaname,
+                                             self.refpara)
+        
+        # create a Parameter() object to be fitted with
+        self.refparameter = mfit.initParameters(self.refparaname, self.refpara)
+        
+        ndata = len([p for p in self.refparaname if p.startswith("rho_b")])
+        
+        # display the table with best fit and print out report
+        self.updateMultiParDisp(self.mrefpar,self.refparameteref)
+        
+        # close the first dialog and open a new dialog 
+        self.referr2 = uic.loadUi('err2.ui',QDialog(self))
+        self.referr2.label.setText('Please select other parameters to fit')
+        self.referr2.cancelPB.clicked.connect(lambda x: self.referr2.close())
+        self.referr2.nextPB.clicked.connect(self.multiErrorFit)
+        
+        self.referr2.show()
+           
+    def multiErrorFit(self):   
+        
+        self.uifluerr2.close()
+        # create a progress bar for displaying progress
+        self.progressDialog=QProgressDialog('Calculating Chi-square','Abort',0,100)
+        self.progressDialog.setWindowModality(Qt.WindowModal)
+        self.progressDialog.setWindowTitle('Wait')
+        self.progressDialog.setAutoClose(True)
+        self.progressDialog.setAutoReset(True)
+        self.progressDialog.setMinimum(1)
+        self.progressDialog.setMaximum(len(self.fluerr_fit_range))
+        self.progressDialog.show()
+        
+        
+        # create a Parameter() object for fitting
+        self.fluerr_parameters = Parameters()
+        for i,para in self.flupara.items():
+            para[1] = False # set all the parameters fixed first
+            if self.fluparaname[i] == self.fluerr_pname_to_fit: 
+                para[1] = False # make sure THE parameter is fixed. 
+            elif self.uifluCB[i].checkState()!=0:  
+                para[1]=True #set the selected parameters to be varied
+            # add the parameter to the parameter object
+            self.fluerr_parameters.add(self.fluparaname[i],
+                                       value = para[0],
+                                       vary = para[1],  
+                                       min = para[2],
+                                       max=para[3])
+        
+        # prepare data and choose the type of error for fitting
+        data=np.loadtxt(str(self.flufiles[self.selectedflufiles_rows[0]]), comments='#')
+        ini=max(float(str(self.ui.flufitranLE.text()).split(':')[0]),np.min(data[:,0]))
+        fin=min(float(str(self.ui.flufitranLE.text()).split(':')[1]),np.max(data[:,0]))
+        data1=data[np.where(np.logical_and(data[:,0]>=ini,data[:,0]<=fin))]
+        x=data1[:,0]
+        y=data1[:,1]
+        if self.ui.fluerrCB.currentIndex()==0:
+            yerr=data1[:,2]
+        elif self.ui.fluerrCB.currentIndex()==1:
+            yerr=np.sqrt(y)
+        elif self.ui.fluerrCB.currentIndex()==2:
+            yerr=y
+        else:
+            yerr=np.ones_like(x)
+        
+    
+        
+        # fit data and calculate chisq at each grid point
+        for i,para_value in enumerate(self.fluerr_fit_range):
+            self.fluerr_parameters[self.fluerr_pname_to_fit].value = para_value
+            fluresult=minimize(self.flu2min, self.fluerr_parameters, args=(x,y,yerr))
+            self.fluerr_chisq_list[i] = fluresult.redchi
+            # update progress
+            self.progressDialog.setValue(self.progressDialog.value()+1)
+            if self.progressDialog.wasCanceled()==True: break
+        self.progressDialog.hide() 
+        
+        # calculate the left/right error for the parameter
+        funChisqFactor=interp1d(self.errorlist[:,0],self.errorlist[:,1],kind='cubic')
+        chisq_factor = funChisqFactor(fluresult.nfree) # chisq_factor corresponding to degree of freedom
+        index_minimum_chisq = np.argmin(self.fluerr_chisq_list[1:]) + 1
+        minimum_chisq = np.min(self.fluerr_chisq_list[1:])
+        self.target_chisq = minimum_chisq * chisq_factor
+        try: # interpolate function of left values against various chisq's
+            funChisqListLeft = interp1d(self.fluerr_chisq_list[1:index_minimum_chisq+1],
+                                        self.fluerr_fit_range[1:index_minimum_chisq+1],
+                                        kind='linear')
+            left_err = self.fluerr_best_value - funChisqListLeft(self.target_chisq)
+            left_err_str = format(float(left_err),'.2e')
+        except:
+            left_err_str = "not found"
+        try: # interpolate function of right values against various chisq's
+            funChisqListRight = interp1d(self.fluerr_chisq_list[index_minimum_chisq:],
+                                         self.fluerr_fit_range[index_minimum_chisq:],
+                                         kind='linear')
+            right_err = funChisqListRight(self.target_chisq) - self.fluerr_best_value
+            right_err_str = format(float(right_err),'.2e')
+        except:
+            right_err_str = "not found"
+        
+        # 
+        self.uifluerr3=uic.loadUi('err3.ui',QDialog(self))
+        self.uifluerr3.label.setText( 'Plot for Chi-square vs Parameter: ' 
+                                    + self.fluerr_pname_to_fit)
+        self.uifluerr3.minchiLE.setText(format(minimum_chisq,'.2f'))
+        self.uifluerr3.tarchiLE.setText(format(self.target_chisq,'.2f'))
+        self.uifluerr3.lefterrLE.setText(left_err_str)
+        self.uifluerr3.righterrLE.setText(right_err_str)
+        self.uifluerr3.logyCB.stateChanged.connect(self.fluErrorPlot)
+        self.uifluerr3.closePB.clicked.connect(lambda x: self.uifluerr3.close())
+        self.uifluerr3.savePB.clicked.connect(self.fluErrorSave)
+        self.uifluerr3.show()
+        self.fluErrorPlot()
+        
+    def multiErrorPlot(self):
+        the_ax = self.uifluerr3.plotWidget.canvas.ax
+        the_ax.clear()
+        the_ax.set_xlabel(self.fluerr_pname_to_fit)
+        the_ax.set_ylabel('Chi-square')
+        # check if y axis is logscale
+        if self.uifluerr3.logyCB.checkState()!=0:
+            the_ax.set_yscale('log')
+        else:
+            the_ax.set_yscale('linear')
+
+        # plot the calculated chisq
+        the_ax.plot(self.fluerr_fit_range[1:], self.fluerr_chisq_list[1:],
+                    marker='o',ls='-')
+        
+        # plot the fitted parameter value and corresponding chisq
+        the_ax.plot(self.fluerr_fit_range[0], self.fluerr_chisq_list[0],
+                    marker='o',color='red')
+                    
+        # plot the target chisq
+        the_ax.plot(self.fluerr_fit_range[[1,-1]], 
+                    self.target_chisq * np.array([1,1]),
+                    ls='-',color='green')
+                    
+        self.uifluerr3.plotWidget.canvas.draw()
+           
+    def multiErrorSave(self):
+        print "Save function to be released..."    
+    
     def ref2min(self, params, x, y, yerr): 
         #residuel for ref fitting
         row=self.ui.refparTW.rowCount()
@@ -2437,6 +2646,7 @@ class MainWindow (QMainWindow):
             
             # if Y_scale is selected, also enter debug mode (a trick!!!)
             if self.uifluCB[2].checkState() != 0:
+                import pdb; pdb.set_trace()
                 # if y_scale is the only selected, fit y_scale.
                 if fluerr_pname_to_fit_num == 0:
                     fluerr_pname_to_fit_num = 1
@@ -2453,7 +2663,7 @@ class MainWindow (QMainWindow):
                 print "Calculating Chi-square for: %s" \
                       %(self.fluerr_pname_to_fit)
         except ValueError:
-            print " Did u pick the right number of parameters to fit?"
+            print " Did u pick the right number of parameters to fit?\n\n"
             # if multiple para's r checked, uncheck all and raise error
             for check_box in self.uifluCB: 
                 check_box.setChecked(False)
