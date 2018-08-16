@@ -1,0 +1,17 @@
+Chi_Square	NA
+Error_Type	data
+Num_of_Layer	1
+Roughness	Fixed
+Para_Name	Value		Vary	Stderr		Min	Max
+rho_t		0.2592	NA	NA	NA	NA
+mu_t		0.0	NA	NA	NA	NA
+sigma0		2	NA	NA	NA	NA
+d1		24	NA	NA	NA	NA
+rho1		0.355	NA	NA	NA	NA
+mu1		0.0	NA	NA	NA	NA
+sigma1		2.0	NA	NA	NA	NA
+rho_b		0.39	NA	NA	NA	NA
+mu_b		0.0	NA	NA	NA	NA
+q_off		0.000705	NA	NA	NA	NA
+y_scale		1.0	NA	NA	NA	NA
+q_res		0.0	NA	NA	NA	NA

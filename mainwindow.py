@@ -150,7 +150,7 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.calsldCB, SIGNAL('stateChanged(int)'),self.updateRefCal)
         self.connect(self.ui.refsaveCB, SIGNAL('activated(int)'), self.saveRef)
         self.connect(self.ui.refloadCB, SIGNAL('activated(int)'), self.loadRef)
-        self.connect(self.ui.fitrefPB,SIGNAL('clicked()'),self.fitRef)
+        self.ui.fitrefPB.clicked.connect(self.fitRef)
         self.connect(self.ui.refqoffLE,SIGNAL('returnPressed()'),self.updateRefCal)
         self.connect(self.ui.refyscaleLE,SIGNAL('returnPressed()'),self.updateRefCal)
         self.connect(self.ui.refqresLE,SIGNAL('returnPressed()'),self.updateRefCal)
