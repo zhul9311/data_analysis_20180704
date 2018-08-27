@@ -202,7 +202,7 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.fluqoffLE,SIGNAL('returnPressed()'),self.updateFluCal)
         self.connect(self.ui.fluyscaleLE,SIGNAL('returnPressed()'),self.updateFluCal)
         self.connect(self.ui.fluconLE,SIGNAL('returnPressed()'),self.updateFluCal)
-        self.connect(self.ui.flulinLE,SIGNAL('returnPressed()'),self.updateFluCal)
+        self.ui.flulinLE.returnPressed.connect(self.updateFluCal)
         self.connect(self.ui.flusurcurLE,SIGNAL('returnPressed()'),self.updateFluCal)
         self.connect(self.ui.flufitPB,SIGNAL('clicked()'),self.fitFlu)
         self.connect(self.ui.fluconsPB, SIGNAL('clicked()'),self.updateFluPara)
@@ -210,7 +210,7 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.fluloadCB, SIGNAL('activated(int)'), self.loadFlu) 
         self.connect(self.ui.fluscalePB, SIGNAL('clicked()'),self.setFluPlotScale)
         self.connect(self.ui.fluErrPB,SIGNAL('clicked()'),self.fluErrorInit)
-        #gixos analysis
+        # Gixos Analysis
         self.connect(self.ui.action_Open_GIX_file, SIGNAL('triggered()'),self.openGixFile)
         self.connect(self.ui.addgixfilePB, SIGNAL('clicked()'),self.addGixFile)
         self.connect(self.ui.gixfileLW, SIGNAL('itemSelectionChanged()'),self.updateSelectedGixFile)
@@ -2765,9 +2765,8 @@ class MainWindow (QMainWindow):
             yerr=y
         else:
             yerr=np.ones_like(x)
-        
-    
-        
+
+
         # fit data and calculate chisq at each grid point
         for i,para_value in enumerate(self.fluerr_fit_range):
             self.fluerr_parameters[self.fluerr_pname_to_fit].value = para_value
