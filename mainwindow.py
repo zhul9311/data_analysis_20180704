@@ -669,7 +669,13 @@ class MainWindow (QMainWindow):
                 self.updateRefEDPlot()
         
     def refCalFun(self,d,rho,mu,sigma,syspara,x):
-        qoff=syspara[0] 
+        print "d: ", d
+        print "rho: ", rho
+        print "mu: ", mu
+        print "sigma: ", sigma
+        print "syspara: ", syspara
+
+        qoff=syspara[0]
         yscale=syspara[1]
         qres=syspara[2] 
         d=[abs(d[i]) for i in range(len(d))]
@@ -1396,18 +1402,21 @@ class MainWindow (QMainWindow):
     def multiErrorSave(self):
         print "Save function to be released..."    
     
-    def ref2min(self, params, x, y, yerr): 
+    def ref2min(self, params, x, y, yerr, fit=True):
         #residuel for ref fitting
-        row=self.ui.refparTW.rowCount()
-        d=[params[self.refparaname[i*4+3]].value for i in range(row-2)]
-        rho=[params[self.refparaname[i*4]].value for i in range(row-1)]
-        mu=[params[self.refparaname[i*4+1]].value for i in range(row-1)]
-        sigma=[params[self.refparaname[i*4+2]].value for i in range(row-1)]
+        row = self.ui.refparTW.rowCount()
+        d = [params[self.refparaname[i*4+3]].value for i in range(row-2)]
+        rho = [params[self.refparaname[i*4]].value for i in range(row-1)]
+        mu = [params[self.refparaname[i*4+1]].value for i in range(row-1)]
+        sigma = [params[self.refparaname[i*4+2]].value for i in range(row-1)]
         rho.append(params[self.refparaname[-2]].value)  #add bottom phase
         mu.append(params[self.refparaname[-1]].value)  #add bottom phase
-        syspara=[params[self.refsysparaname[i]].value for i in range(3)]
-        model=self.refCalFun(d,rho,mu,sigma,syspara,x)
-        return (model-y)/yerr
+        syspara = [params[self.refsysparaname[i]].value for i in range(3)]
+        model = lambda xx: self.refCalFun(d,rho,mu,sigma,syspara,xx)
+        if fit == True:
+            return (model(x)-y)/yerr
+        else:
+            return model
     
     def saveRefPara(self):
         self.saveFileName=str(QFileDialog.getSaveFileName(caption='Save Reflectivity Fitting Parameters',directory=self.directory))
@@ -2171,7 +2180,8 @@ class MainWindow (QMainWindow):
         self.flufiles=map(str, f)
         self.directory=str(QFileInfo(self.flufiles[0]).absolutePath())
         self.updateFluFile()
-    
+        print f, '\n', self.flufiles, '\n', self.directory
+
     def updateFluFile(self): #update flu files in the listwidget
         self.ui.flufileLW.clear()
         for i in range(len(self.flufiles)):
@@ -2378,14 +2388,16 @@ class MainWindow (QMainWindow):
         qoff=flupara[1] # q offset
         yscale=flupara[2] # y scale
         bgcon=flupara[3] # background constant
-        bglin=flupara[4] # background linear
         surcur=flupara[5]*1e10   # surface curvature, in unit of /AA
+        con_upbk = flupara[4]  # background linear is borrowed for upper phase concentration.
         conbulk=flupara[6]   # bulk concentration
         k0=2*np.pi*float(self.ui.fluxenLE.text())/12.3984 # wave vector
         slit=float(self.ui.flusliLE.text())  #get slits size
         detlen=float(self.ui.fludetLE.text())*1e7  #get detector length in unit of /AA 
         topd=1/(self.flutopbet*2*k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
         qz=x+qoff
+        rrfModel = self.ref2min(self.refparameter, None, None, None, fit=False)
+        rrf = rrfModel(qz) # reflectivity at every Qz point
         alpha=qz/2/k0  #get incident angle 
         fprint=slit/alpha*1e7 #get the footprint in unit of /AA
         if surcur==0:  #no surface curvature  
@@ -2404,24 +2416,29 @@ class MainWindow (QMainWindow):
         else:  #with surface curvature 
             flu=[]
             for i in range(len(alpha)):
-                bsum=0
-                ssum=0
+                bsum = 0
+                ssum = 0
+                usum = 0
                 steps=int((detlen+fprint[i])/2/1e6)  # use 0.1 mm as the step size
                 stepsize=(detlen+fprint[i])/2/steps
                 x=np.linspace(-fprint[i]/2, detlen/2, steps) # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
                 for j in range(len(x)):
                     alphanew=alpha[i]-x[j]/surcur  # the incident angle at position x[j]
-                    y1=-detlen/2-x[j]
-                    y2=detlen/2-x[j]
+                    y1=-detlen/2-x[j] # distance between x' and left edge of detector
+                    y2=detlen/2-x[j] # distance between x' and right edge of detector
                     effd,trans=self.frsnllCal(self.flutopdel,self.flutopbet,self.flubotdel,self.flubotbeta,self.flubotmu1,k0,alphanew) 
                     if x[j]>-detlen/2:
-                        bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
-                        ssum=ssum+np.exp(-x[j]/topd)*trans
+                        bsum = bsum+np.exp(-x[j]/topd)*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
+                        ssum = ssum+np.exp(-x[j]/topd)*trans
+                        usum = usum + alpha * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*rrf[i])
                     else:
                         bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(np.exp(-y1*alpha[i]/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
-                int_bulk=bsum*stepsize*self.avoganum*conbulk*self.fluelepara[0][1]/1e27
-                int_sur=ssum*stepsize*surden
-                int_tot=yscale*(int_bulk+int_sur)+bgcon+bglin*alpha[i]  
+
+                int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
+                int_upbk = usum * stepsize * con_upbk  # if there is metal ions in the upper phase.
+                int_sur = ssum * stepsize * surden
+                # int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
+                int_tot = yscale * (int_bulk + int_sur) + bgcon
                 flu.append(int_tot)
         return flu
         

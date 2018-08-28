@@ -1,17 +1,22 @@
-Chi_Square	NA
+Chi_Square	6.122
 Error_Type	data
-Num_of_Layer	1
-Roughness	Fixed
 Para_Name	Value		Vary	Stderr		Min	Max
-rho_t		0.2592	NA	NA	NA	NA
-mu_t		0.0	NA	NA	NA	NA
-sigma0		2	NA	NA	NA	NA
-d1		24	NA	NA	NA	NA
-rho1		0.355	NA	NA	NA	NA
-mu1		0.0	NA	NA	NA	NA
-sigma1		2.0	NA	NA	NA	NA
-rho_b		0.39	NA	NA	NA	NA
-mu_b		0.0	NA	NA	NA	NA
-q_off		0.000705	NA	NA	NA	NA
-y_scale		1.0	NA	NA	NA	NA
-q_res		0.0	NA	NA	NA	NA
+sur_den   	1.262e-01	True	3.474e-02	0.0	None
+q_off   	1.360e-03	False	0.000e+00	None	None
+y_scale   	3.230e-11	False	0.000e+00	None	None
+bg_con   	1.894e-03	True	2.738e-04	0.0	None
+bg_lin   	0.000e+00	False	0.000e+00	None	None
+sur_cur   	9.477e+01	True	4.721e+01	None	None
+bulk_con   	0.000e+00	False	0.000e+00	0.0	None
+Constants:
+Xray_energy	3.000e+01
+Fluo_energy	5.842e+00
+Rho_topphase	2.591e-01
+Rho_botphase	3.330e-01
+Beta_topphase	5.860e-11
+Beta_bot(inc)	1.060e-10
+Beta_bot(flu)	8.750e-09
+Slit_vertical	1.500e-02
+Detector_len	1.270e+01
+Ele.	Comp.	Rad.
+Eu	1	1.17

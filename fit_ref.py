@@ -29,6 +29,12 @@ def sldCalFun(d,rho,sigma,x):
     return sld_tot
 
 def refCalFun(d,rho,mu,sigma,syspara,x):
+    print "d: ", d
+    print "rho: ", rho
+    print "mu: ", mu
+    print "sigma: ", sigma
+    print "syspara: ", syspara
+    print "x: ", x
 
     if sigma[0] <= 0: sigma[p] = 1e-5 # eliminate zero
     sigma = sigma[0] * np.ones(len(sigma)) # fixed sigma

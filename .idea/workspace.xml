@@ -3,6 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="44883fca-1a8f-46ea-a608-7b2f52f1b69e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_par.txt" beforeDir="false" afterPath="$PROJECT_DIR$/_par.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fit_ref.py" beforeDir="false" afterPath="$PROJECT_DIR$/fit_ref.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mainwindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/mainwindow.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -15,10 +17,10 @@
     <session id="-1246980676">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="3" />
+          <entry key="project.closed" value="4" />
           <entry key="project.open.time.2" value="1" />
-          <entry key="project.open.time.3" value="3" />
-          <entry key="project.opened" value="4" />
+          <entry key="project.open.time.3" value="4" />
+          <entry key="project.opened" value="5" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -34,12 +36,12 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="Python Console" value="43" />
-          <entry key="py" value="611" />
+          <entry key="py" value="1675" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Python" value="654" />
+          <entry key="Python" value="1718" />
         </counts>
       </usages-collector>
     </session>
@@ -49,14 +51,11 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/mainwindow.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="2422" column="16" lean-forward="true" selection-start-line="2422" selection-start-column="16" selection-end-line="2422" selection-end-column="16" />
+            <state relative-caret-position="443">
+              <caret line="2593" column="62" selection-start-line="2593" selection-start-column="62" selection-end-line="2593" selection-end-column="62" />
               <folding>
                 <element signature="e#0#21#0" expanded="true" />
-                <element signature="e#894#15700#0" expanded="true" />
-                <element signature="e#119023#120295#0" expanded="true" />
-                <element signature="e#137166#140618#0" expanded="true" />
-                <element signature="e#152833#157590#0" expanded="true" />
+                <element signature="e#120647#121036#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -65,10 +64,10 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/fit_ref.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="323">
-              <caret line="72" column="38" selection-start-line="72" selection-start-column="38" selection-end-line="72" selection-end-column="38" />
+            <state relative-caret-position="391">
+              <caret line="36" column="18" selection-start-line="31" selection-start-column="4" selection-end-line="36" selection-end-column="18" />
               <folding>
-                <marker date="1534455558909" expanded="true" signature="4485:4495" ph="..." />
+                <marker date="1535383116919" expanded="true" signature="4625:4635" ph="..." />
               </folding>
             </state>
           </provider>
@@ -81,6 +80,8 @@
       <find>self.fitRef</find>
       <find>sldCalFun</find>
       <find>fitRef</find>
+      <find>uifluLE</find>
+      <find>flupara</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -105,6 +106,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -116,7 +118,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -189,11 +190,11 @@
     <frame x="111" y="23" width="1479" height="1027" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.3013222" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.30549756" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info active="true" anchor="bottom" id="Find" order="1" visible="true" weight="0.32941177" />
+      <window_info anchor="bottom" id="Find" order="1" visible="true" weight="0.32941177" />
       <window_info anchor="bottom" id="Run" order="2" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.28342247" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
@@ -221,35 +222,27 @@
           <line>407</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/mainwindow.py</url>
-          <line>922</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/mainwindow.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="2422" column="16" lean-forward="true" selection-start-line="2422" selection-start-column="16" selection-end-line="2422" selection-end-column="16" />
+        <state relative-caret-position="443">
+          <caret line="2593" column="62" selection-start-line="2593" selection-start-column="62" selection-end-line="2593" selection-end-column="62" />
           <folding>
             <element signature="e#0#21#0" expanded="true" />
-            <element signature="e#894#15700#0" expanded="true" />
-            <element signature="e#119023#120295#0" expanded="true" />
-            <element signature="e#137166#140618#0" expanded="true" />
-            <element signature="e#152833#157590#0" expanded="true" />
+            <element signature="e#120647#121036#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/fit_ref.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="72" column="38" selection-start-line="72" selection-start-column="38" selection-end-line="72" selection-end-column="38" />
+        <state relative-caret-position="391">
+          <caret line="36" column="18" selection-start-line="31" selection-start-column="4" selection-end-line="36" selection-end-column="18" />
           <folding>
-            <marker date="1534455558909" expanded="true" signature="4485:4495" ph="..." />
+            <marker date="1535383116919" expanded="true" signature="4625:4635" ph="..." />
           </folding>
         </state>
       </provider>
