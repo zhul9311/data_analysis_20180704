@@ -198,6 +198,8 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.insflusubPB, SIGNAL('clicked()'), self.insFluIon)
         self.connect(self.ui.rmflusubPB, SIGNAL('clicked()'), self.rmFluIon)
         self.connect(self.ui.calfluCB, SIGNAL('stateChanged(int)'),self.updateFluCal)
+
+        self.ui.flubulLE.returnPressed.connect(self.updateFluCal)
         self.connect(self.ui.flusurLE,SIGNAL('returnPressed()'),self.updateFluCal)
         self.connect(self.ui.fluqoffLE,SIGNAL('returnPressed()'),self.updateFluCal)
         self.connect(self.ui.fluyscaleLE,SIGNAL('returnPressed()'),self.updateFluCal)
@@ -2246,25 +2248,30 @@ class MainWindow (QMainWindow):
         self.updateFluFitFile()
            
     def updateFluPlot(self): #update the plot in the flu plotwidget
-        self.ui.fluPW.canvas.ax.clear()
-        self.ui.fluPW.canvas.ax.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
-        self.ui.fluPW.canvas.ax.set_ylabel('Intensity [a.u.]')
+
+        ax1 = self.ui.fluPW.canvas.ax
+        ax1.clear()
+        ax1.set_xlabel(r'$Q_z$'+' '+r'$[\AA^{-1}]$')
+        ax1.set_ylabel('Intensity [a.u.]')
         if  len(self.selectedflufiles_rows)!=0: #plot flu files
             for i in range(len(self.selectedflufiles_rows)):
                 data1=np.loadtxt(str(self.flufiles[self.selectedflufiles_rows[i]]), comments='#')
-                self.ui.fluPW.canvas.ax.errorbar(data1[:,0]*self.fluscale[i][0]+self.fluscale[i][1],data1[:,1]*self.fluscale[i][2]+self.fluscale[i][3],data1[:,2]*self.fluscale[i][2],fmt='o',label='#'+str(self.selectedflufiles_rows[i]+1))
+                ax1.errorbar(data1[:,0]*self.fluscale[i][0]+self.fluscale[i][1],data1[:,1]*self.fluscale[i][2]+self.fluscale[i][3],data1[:,2]*self.fluscale[i][2],fmt='o',label='#'+str(self.selectedflufiles_rows[i]+1))
         if  len(self.selectedflufitfiles_rows)!=0: #plot flu fit files
             for i in range(len(self.selectedflufitfiles_rows)):
                 data1=np.loadtxt(str(self.flufitfiles[self.selectedflufitfiles_rows[i]]), comments='#')
-                self.ui.fluPW.canvas.ax.errorbar(data1[:,0]*self.flufitscale[i][0]+self.flufitscale[i][1],data1[:,1]*self.flufitscale[i][2]+self.flufitscale[i][3],fmt='-',label='#'+str(self.selectedflufitfiles_rows[i]+1))
+                ax1.errorbar(data1[:,0]*self.flufitscale[i][0]+self.flufitscale[i][1],data1[:,1]*self.flufitscale[i][2]+self.flufitscale[i][3],fmt='-',label='#'+str(self.selectedflufitfiles_rows[i]+1))
         if  self.ui.calfluCB.checkState()!=0:
-                self.ui.fluPW.canvas.ax.errorbar(np.array(self.flucal)[:,0],np.array(self.flucal)[:,1],fmt='-', label='cal')
+                ax1.errorbar(np.array(self.flucal)[:,0],np.array(self.flucal)[:,1],fmt='-', label='cal')
+                ax1.errorbar(np.array(self.flu_oil)[:, 0], np.array(self.flu_oil)[:, 1], fmt='-', label='oil')
+                ax1.errorbar(np.array(self.flu_bulk)[:, 0], np.array(self.flu_bulk)[:, 1], fmt='-', label='bulk')
+                ax1.errorbar(np.array(self.flu_sur)[:, 0], np.array(self.flu_sur)[:, 1], fmt='-', label='sur')
         if self.ui.flulegendCB.checkState()!=0:
-            self.ui.fluPW.canvas.ax.legend(loc=self.ui.flulegendlocCoB.currentIndex()+1,frameon=False,scatterpoints=0,numpoints=1)
+            ax1.legend(loc=self.ui.flulegendlocCoB.currentIndex()+1,frameon=False,scatterpoints=0,numpoints=1)
         if self.ui.flulogyCB.checkState()!=0:
-            self.ui.fluPW.canvas.ax.set_yscale('log')
+            ax1.set_yscale('log')
         else:
-            self.ui.fluPW.canvas.ax.set_yscale('linear')
+            ax1.set_yscale('linear')
         self.ui.fluPW.canvas.draw()
         
     def setFluPlotScale(self): #set the scale of each data in the flu plot 
@@ -2374,6 +2381,9 @@ class MainWindow (QMainWindow):
         if self.flusavefitindex==1:
             xflu=np.linspace(max(0,self.fluxmin),self.fluxmax,self.flunp)
             self.flucal=np.vstack((xflu,self.fluCalFun(flupara,xflu))).T
+            self.flu_oil = np.vstack((xflu, self.flu_oil)).T
+            self.flu_bulk = np.vstack((xflu, self.flu_bulk)).T
+            self.flu_sur = np.vstack((xflu, self.flu_sur)).T
         else:
             if  self.ui.calfluCB.checkState()!=0:
                 if  len(self.selectedflufiles_rows)!=0: 
@@ -2385,6 +2395,9 @@ class MainWindow (QMainWindow):
                     self.fluxmin=self.fluqc-0.006
                 xflu=np.linspace(self.fluxmin,self.fluxmax,200)
                 self.flucal=np.vstack((xflu,self.fluCalFun(flupara,xflu))).T
+                self.flu_oil = np.vstack((xflu, self.flu_oil)).T
+                self.flu_bulk = np.vstack((xflu, self.flu_bulk)).T
+                self.flu_sur = np.vstack((xflu, self.flu_sur)).T
             self.updateFluPlot()
             
     def fluCalFun(self,flupara,x):
@@ -2394,7 +2407,7 @@ class MainWindow (QMainWindow):
         yscale=flupara[2] # y scale
         bgcon=flupara[3] # background constant
         surcur=flupara[5]*1e10   # surface curvature, in unit of /AA
-        con_upbk = flupara[4]  # background linear is borrowed for upper phase concentration.
+        conupbk = flupara[4]  # background linear is borrowed for upper phase concentration.
         conbulk=flupara[6]   # bulk concentration
         k0=2*np.pi*float(self.ui.fluxenLE.text())/12.3984 # wave vector
         slit=float(self.ui.flusliLE.text())  #get slits size
@@ -2420,6 +2433,9 @@ class MainWindow (QMainWindow):
              #   p_d.append(effd)
         else:  #with surface curvature 
             flu=[]
+            self.flu_oil = []
+            self.flu_bulk = []
+            self.flu_sur = []
             for i in range(len(alpha)):
                 bsum = 0
                 ssum = 0
@@ -2440,11 +2456,14 @@ class MainWindow (QMainWindow):
                         bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(np.exp(-y1*alpha[i]/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
 
                 int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
-                int_upbk = usum * stepsize * con_upbk  # if there is metal ions in the upper phase.
+                int_upbk = usum * stepsize * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  # if there is metal ions in the upper phase.
                 int_sur = ssum * stepsize * surden
                 int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
                 # int_tot = yscale * (int_bulk + int_sur) + bgcon
                 flu.append(int_tot)
+                self.flu_oil.append(yscale * int_upbk)
+                self.flu_sur.append(yscale * int_sur)
+                self.flu_bulk.append(yscale * int_bulk)
         return flu
         
     def frsnllCal(self, dett,bett,detb,betb,mub,k0,alpha):
