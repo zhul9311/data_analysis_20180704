@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="44883fca-1a8f-46ea-a608-7b2f52f1b69e" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/data_analysis_20180704.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/data_analysis_20180704.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fit_ref.py" beforeDir="false" afterPath="$PROJECT_DIR$/fit_ref.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mainwindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/mainwindow.py" afterDir="false" />
-    </list>
+    <list default="true" id="44883fca-1a8f-46ea-a608-7b2f52f1b69e" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -164,7 +158,7 @@
                 <element signature="e#72970#73324#0" />
                 <element signature="e#73468#73821#0" />
                 <element signature="e#137933#138292#0" expanded="true" />
-                <marker date="1535641742259" expanded="false" signature="147818:147827" ph="..." />
+                <marker date="1535647443365" expanded="false" signature="147818:147827" ph="..." />
               </folding>
             </state>
           </provider>
@@ -188,7 +182,7 @@
             <state relative-caret-position="185">
               <caret line="30" column="49" selection-start-line="30" selection-start-column="49" selection-end-line="30" selection-end-column="49" />
               <folding>
-                <marker date="1535641589353" expanded="true" signature="4549:4559" ph="..." />
+                <marker date="1535647443363" expanded="true" signature="4549:4559" ph="..." />
               </folding>
             </state>
           </provider>
@@ -498,7 +492,7 @@
         <state relative-caret-position="185">
           <caret line="30" column="49" selection-start-line="30" selection-start-column="49" selection-end-line="30" selection-end-column="49" />
           <folding>
-            <marker date="1535641589353" expanded="true" signature="4549:4559" ph="..." />
+            <marker date="1535647443363" expanded="true" signature="4549:4559" ph="..." />
           </folding>
         </state>
       </provider>
@@ -614,7 +608,7 @@
             <element signature="e#72970#73324#0" />
             <element signature="e#73468#73821#0" />
             <element signature="e#137933#138292#0" expanded="true" />
-            <marker date="1535641742259" expanded="false" signature="147818:147827" ph="..." />
+            <marker date="1535647443365" expanded="false" signature="147818:147827" ph="..." />
           </folding>
         </state>
       </provider>
