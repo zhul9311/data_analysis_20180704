@@ -28,13 +28,7 @@ def sldCalFun(d,rho,sigma,x):
 
     return sld_tot
 
-def refCalFun(d,rho,mu,sigma,syspara,x):
-    print "d: ", d
-    print "rho: ", rho
-    print "mu: ", mu
-    print "sigma: ", sigma
-    print "syspara: ", syspara
-    print "x: ", x
+def refCalFun(d,rho,mu,sigma,syspara,x,rrf=True):
 
     if sigma[0] <= 0: sigma[p] = 1e-5 # eliminate zero
     sigma = sigma[0] * np.ones(len(sigma)) # fixed sigma
@@ -73,8 +67,10 @@ def refCalFun(d,rho,mu,sigma,syspara,x):
 
     ref,refr=xr.parratt(x+qoff,lamda,d,sdelf,sbet)
     frsnll,frsnl1=xr.parratt(x,lamda,[0,1],[sdelf[0],sdelf[-1]],[sbet[0],sbet[-1]]) 
-    
-    return yscale*ref/frsnll
+    if rrf == True:
+        return yscale*ref/frsnll
+    else:
+        return yscale*ref
 
 def ref2min(params,x,y,yerr,fit=True):
 

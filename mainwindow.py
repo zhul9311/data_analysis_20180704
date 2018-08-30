@@ -1402,7 +1402,7 @@ class MainWindow (QMainWindow):
     def multiErrorSave(self):
         print "Save function to be released..."    
     
-    def ref2min(self, params, x, y, yerr, fit=True):
+    def ref2min(self, params, x, y, yerr, fit=True, rrf=True):
         #residuel for ref fitting
         row = self.ui.refparTW.rowCount()
         d = [params[self.refparaname[i*4+3]].value for i in range(row-2)]
@@ -1412,8 +1412,13 @@ class MainWindow (QMainWindow):
         rho.append(params[self.refparaname[-2]].value)  #add bottom phase
         mu.append(params[self.refparaname[-1]].value)  #add bottom phase
         syspara = [params[self.refsysparaname[i]].value for i in range(3)]
-        model = lambda xx: self.refCalFun(d,rho,mu,sigma,syspara,xx)
-        if fit == True:
+
+        if rrf == True: # whether it is a rrf or ref model
+            model = lambda xx: mfit.refCalFun(d,rho,mu,sigma,syspara,xx)
+        else:
+            model = lambda xx: mfit.refCalFun(d,rho,mu,sigma,syspara,xx,rrf=False)
+
+        if fit == True: # wether it returns the model or the rsiduals.
             return (model(x)-y)/yerr
         else:
             return model
@@ -1738,8 +1743,6 @@ class MainWindow (QMainWindow):
 ################################################        
 #state the rod analysis section. 
 ################################################
-
-
     
     def openRodFile(self):  #open ref files and also remove all current ref files in the listwidget
         f=QFileDialog.getOpenFileNames(caption='Select Multiple ROD Files to import', directory=self.directory, filter='ROD Files (*.rod*;*.cut*;*_cut.txt)')
@@ -2364,6 +2367,7 @@ class MainWindow (QMainWindow):
             self.flupara[i][0]=float(self.uifluLE[i].text())   
     
     def updateFluCal(self): # caluate the flu  based on current parameters.
+        print " This line is executed!"
         self.updateFluParVal()
         self.updateFluElement()
         flupara=[self.flupara[i][0] for i in range(len(self.flupara))]
@@ -2384,6 +2388,7 @@ class MainWindow (QMainWindow):
             self.updateFluPlot()
             
     def fluCalFun(self,flupara,x):
+
         surden=flupara[0] # surface density
         qoff=flupara[1] # q offset
         yscale=flupara[2] # y scale
@@ -2396,7 +2401,7 @@ class MainWindow (QMainWindow):
         detlen=float(self.ui.fludetLE.text())*1e7  #get detector length in unit of /AA 
         topd=1/(self.flutopbet*2*k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
         qz=x+qoff
-        rrfModel = self.ref2min(self.refparameter, None, None, None, fit=False)
+        rrfModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
         rrf = rrfModel(qz) # reflectivity at every Qz point
         alpha=qz/2/k0  #get incident angle 
         fprint=slit/alpha*1e7 #get the footprint in unit of /AA
@@ -2430,15 +2435,15 @@ class MainWindow (QMainWindow):
                     if x[j]>-detlen/2:
                         bsum = bsum+np.exp(-x[j]/topd)*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
                         ssum = ssum+np.exp(-x[j]/topd)*trans
-                        usum = usum + alpha * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*rrf[i])
+                        usum = usum + alpha[i] * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*rrf[i])
                     else:
                         bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(np.exp(-y1*alpha[i]/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
 
                 int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
                 int_upbk = usum * stepsize * con_upbk  # if there is metal ions in the upper phase.
                 int_sur = ssum * stepsize * surden
-                # int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
-                int_tot = yscale * (int_bulk + int_sur) + bgcon
+                int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
+                # int_tot = yscale * (int_bulk + int_sur) + bgcon
                 flu.append(int_tot)
         return flu
         
