@@ -30,7 +30,7 @@ def sldCalFun(d,rho,sigma,x):
 
 def refCalFun(d,rho,mu,sigma,syspara,x,rrf=True):
 
-    if sigma[0] <= 0: sigma[p] = 1e-5 # eliminate zero
+    if sigma[0] <= 0: sigma[0] = 1e-5 # eliminate zero
     sigma = sigma[0] * np.ones(len(sigma)) # fixed sigma
 
     qoff = syspara[0]

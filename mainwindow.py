@@ -24,8 +24,7 @@ import matplotlib as mpl
 import periodictable 
 from periodictable import *
 import copy
-import pdb
-import fit_ref as mfit   
+import fit_ref as mfit
 
 (Ui_MainWindow, QMainWindow) = uic.loadUiType('mainwindow.ui')
 
@@ -317,7 +316,8 @@ class MainWindow (QMainWindow):
         self.reffitscale=[[1,0,1,0] for i in range(len(self.selectedreffitfiles_rows))]
         self.updateRefPlot()
         
-    def removeRefFitFile(self):  #remove ref fit files in the listwidget and deselect all ref fit files in the listwidget
+    def removeRefFitFile(self):
+        #remove ref fit files in the listwidget and deselect all ref fit files in the listwidget
         items=self.ui.reffitfileLW.selectedItems()
         for item in items:
             self.reffitfiles.pop(self.ui.reffitfileLW.row(item))
@@ -1026,7 +1026,7 @@ class MainWindow (QMainWindow):
                 self.ui.refparaTB.setTextCursor(cursor)
         except IndexError:
             import pdb; pdb.set_trace()
-    
+
     def multiRefInit(self):
         
         # selectedreffiles=self.ui.reffileLW.selectedItems()
@@ -1109,7 +1109,6 @@ class MainWindow (QMainWindow):
         self.mrefpar.show()
        
     def multiFitRef(self):
-        import pdb; pdb.set_trace()
         # update parameter list and create a Parameter() object to fit
         self.updateMultiPlot()
         
@@ -1248,7 +1247,7 @@ class MainWindow (QMainWindow):
         self.referr1.cancelPB.clicked.connect( \
             lambda x: self.referr1.close())
         self.referr1.nextPB.clicked.connect(self.multiErrorPara)
-        self.referr1.show() 
+        self.referr1.show()
     
     def multiErrorPara(self):
         
@@ -1294,8 +1293,6 @@ class MainWindow (QMainWindow):
         self.referr2.show()
            
     def multiErrorFit(self):
-        
-        import pdb; pdb.set_trace();
 
         self.referr2.close()
         # create a progress bar for displaying progress
@@ -1402,7 +1399,7 @@ class MainWindow (QMainWindow):
         self.referr3.plotWidget.canvas.draw()
            
     def multiErrorSave(self):
-        print "Save function to be released..."    
+        print "Save function to be released..."
     
     def ref2min(self, params, x, y, yerr, fit=True, rrf=True):
         #residuel for ref fitting
@@ -1492,8 +1489,7 @@ class MainWindow (QMainWindow):
         self.connect(self.ui.refparTW,SIGNAL('cellChanged(int,int)'), self. updateRefParaVal)
         self.ui.calsldCB.setCheckState(2)
         self.ui.calrefCB.setCheckState(2)
-       # print self.refpara
-    
+
     def errorCal(self):
         index=self.ui.refparTW.selectionModel().selectedIndexes()
         self.sysselparas=[]
@@ -1738,7 +1734,7 @@ class MainWindow (QMainWindow):
         fid.close()
             
     def updateProgress(self): 
-        self.progressDialog.setValue(self.progressDialog.value()+1)  
+        self.progressDialog.setValue(self.progressDialog.value()+1)
 
 
     
@@ -2344,8 +2340,6 @@ class MainWindow (QMainWindow):
         self.flubotbeta=beta+(1-volume)*flubotbeta  #beta =3.462e-10 for water at 20keV
         self.flubotmu1=2*k1*(beta1+(1-volume)*flubotbeta2)  #beta= 1.24492e-9 for water at 14.148keV; mu for the emission line
         self.fluqc=2*np.sqrt(2)*k0*np.sqrt(self.flubotdel-self.flutopdel)  #get qc
-      #  print volume, toprho            
-      #  print self.fluelepara
         
     def insFluIon(self):  # add one ion in the subphase
         insrows=self.ui.flusubTW.selectionModel().selectedRows()
@@ -2414,6 +2408,7 @@ class MainWindow (QMainWindow):
         detlen=float(self.ui.fludetLE.text())*1e7  #get detector length in unit of /AA 
         topd=1/(self.flutopbet*2*k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
         qz=x+qoff
+        self.refparameter['q_off'].value = 0 # reset qoffset in the reflectivity data.
         rrfModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
         rrf = rrfModel(qz) # reflectivity at every Qz point
         alpha=qz/2/k0  #get incident angle 
@@ -2466,7 +2461,7 @@ class MainWindow (QMainWindow):
                 self.flu_bulk.append(yscale * int_bulk)
         return flu
         
-    def frsnllCal(self, dett,bett,detb,betb,mub,k0,alpha):
+    def frsnllCal(self, dett, bett, detb, betb, mub, k0, alpha):
         f1=cmath.sqrt(complex(alpha*alpha,2*bett))
         fmax=cmath.sqrt(complex(alpha*alpha-2*(detb-dett),2*betb))
         length1=1/mub
@@ -2474,7 +2469,7 @@ class MainWindow (QMainWindow):
         eff_d=length1*length2/(length1+length2)
         trans=4*abs(f1/(f1+fmax))*abs(f1/(f1+fmax))
        # frsnll=abs((f1-fmax)/(f1+fmax))*abs((f1-fmax)/(f1+fmax))
-        return eff_d,trans
+        return eff_d, trans
         
     def fitFlu(self):
         self.updateFluParVal()
@@ -2685,7 +2680,6 @@ class MainWindow (QMainWindow):
             
             # if Y_scale is selected, also enter debug mode (a trick!!!)
             if self.uifluCB[2].checkState() != 0:
-                import pdb; pdb.set_trace()
                 # if y_scale is the only selected, fit y_scale.
                 if fluerr_pname_to_fit_num == 0:
                     fluerr_pname_to_fit_num = 1
