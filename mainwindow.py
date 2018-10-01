@@ -1411,7 +1411,7 @@ class MainWindow (QMainWindow):
         rho.append(params[self.refparaname[-2]].value)  #add bottom phase
         mu.append(params[self.refparaname[-1]].value)  #add bottom phase
         syspara = [params[self.refsysparaname[i]].value for i in range(3)]
-
+        print d[0]*rho[1],
         if rrf == True: # whether it is a rrf or ref model
             model = lambda xx: mfit.refCalFun(d,rho,mu,sigma,syspara,xx)
         else:
@@ -1496,7 +1496,8 @@ class MainWindow (QMainWindow):
         for i in range(len(self.refsyspara)):
             if self.refsysCB[i].checkState()!=0:
                 self.sysselparas.append(i)
-        if  len(self.selectedreffiles_rows)!=1: 
+
+        if  len(self.selectedreffiles_rows)!=1:
             self.messageBox("Please select only one set of data for uncertainty calculation!")
         elif len(index)+len(self.sysselparas)!=1:
             self.messageBox("Please select only one parameter for uncertainty calculation!")
@@ -1629,7 +1630,8 @@ class MainWindow (QMainWindow):
                         self.referrpara.add(self.refsysparaname[j], value=self.refsysbestpara[j],vary=self.refsyspara[j][1],min=self.refsyspara[j][2],max=self.refsyspara[j][3])
                     else:
                         self.referrpara.add(self.refsysparaname[j], value=self.refsystemppara[j],vary=self.refsyspara[j][1],min=self.refsyspara[j][2],max=self.refsyspara[j][3])
-            self.referrpara.pretty_print()
+            self.referrpara.add('fixed_value',value=self.referrx2[i],vary=False)
+            self.referrpara['rho1'].set(expr = "fixed_value / d1")
             self.referrresult=minimize(self.ref2min, self.referrpara,args=(x,y,yerr))
             self.referr.append(np.array([self.referrx2[i],self.referrresult.redchi])) # [x value, chi-square]
             print self.referrx2[i], self.referrresult.redchi
@@ -1658,7 +1660,8 @@ class MainWindow (QMainWindow):
                         self.referrpara.add(self.refsysparaname[j], value=self.refsysbestpara[j],vary=self.refsyspara[j][1],min=self.refsyspara[j][2],max=self.refsyspara[j][3])
                     else:
                         self.referrpara.add(self.refsysparaname[j], value=self.refsystemppara[j],vary=self.refsyspara[j][1],min=self.refsyspara[j][2],max=self.refsyspara[j][3])
-            print self.referrpara
+            self.referrpara.add('fixed_value', value=self.referrx1[i], vary=False)
+            self.referrpara['rho1'].set(expr='fixed_value / d1')
             self.referrresult=minimize(self.ref2min, self.referrpara,args=(x,y,yerr))
             self.referr.append(np.array([self.referrx1[i],self.referrresult.redchi]))
             print self.referrx1[i], self.referrresult.redchi
