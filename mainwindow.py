@@ -1411,7 +1411,6 @@ class MainWindow (QMainWindow):
         rho.append(params[self.refparaname[-2]].value)  #add bottom phase
         mu.append(params[self.refparaname[-1]].value)  #add bottom phase
         syspara = [params[self.refsysparaname[i]].value for i in range(3)]
-        print d[0]*rho[1],
         if rrf == True: # whether it is a rrf or ref model
             model = lambda xx: mfit.refCalFun(d,rho,mu,sigma,syspara,xx)
         else:
@@ -2370,7 +2369,7 @@ class MainWindow (QMainWindow):
         for i in range(len(self.fluparaname)):
             self.flupara[i][0]=float(self.uifluLE[i].text())   
     
-    def updateFluCal(self): # caluate the flu  based on current parameters.
+    def updateFluCal(self): # calculate the flu  based on current parameters.
         print " This line is executed!"
         self.updateFluParVal()
         self.updateFluElement()
@@ -2411,10 +2410,14 @@ class MainWindow (QMainWindow):
         detlen=float(self.ui.fludetLE.text())*1e7  #get detector length in unit of /AA 
         topd=1/(self.flutopbet*2*k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
         qz=x+qoff
+
         self.refparameter['q_off'].value = 0 # reset qoffset in the reflectivity data.
-        rrfModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
-        rrf = rrfModel(qz) # reflectivity at every Qz point
-        alpha=qz/2/k0  #get incident angle 
+        self.refparameter['rho_b'].value = float(self.ui.flurhobotLE.text()) # set electron density for bottom phase
+        self.refparameter['rho_t'].value = float(self.ui.flurhotopLE.text()) # set electron density for top phase
+
+        refModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
+        # ref = refModel(qz) # reflectivity at every Qz point
+        alpha=qz/2/k0  #get incident angle
         fprint=slit/alpha*1e7 #get the footprint in unit of /AA
         if surcur==0:  #no surface curvature  
             flu=[]
@@ -2445,14 +2448,16 @@ class MainWindow (QMainWindow):
                     alphanew=alpha[i]-x[j]/surcur  # the incident angle at position x[j]
                     y1=-detlen/2-x[j] # distance between x' and left edge of detector
                     y2=detlen/2-x[j] # distance between x' and right edge of detector
-                    effd,trans=self.frsnllCal(self.flutopdel,self.flutopbet,self.flubotdel,self.flubotbeta,self.flubotmu1,k0,alphanew) 
+                    effd,trans=self.frsnllCal(self.flutopdel,self.flutopbet,self.flubotdel,self.flubotbeta,self.flubotmu1,k0,alphanew)
+                    ref = refModel(2*k0*alphanew)  # calculate the reflectivity at incident angle alpha'.
                     if x[j]>-detlen/2:
                         bsum = bsum+np.exp(-x[j]/topd)*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
                         ssum = ssum+np.exp(-x[j]/topd)*trans
-                        usum = usum + alpha[i] * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*rrf[i])
+                        # usum = usum + alpha[i] * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*ref[i])
+                        usum = usum + alpha*topd((1-exp(y1/topd))+ref*(1-exp(-y2/topd))) # eq (x)(1)
                     else:
                         bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(np.exp(-y1*alpha[i]/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
-
+                        usum = usum + alpha*topd*ref*(exp(-y1/topd)-exp(-y2/topd)) # eq (x)(2)
                 int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
                 int_upbk = usum * stepsize * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  # if there is metal ions in the upper phase.
                 int_sur = ssum * stepsize * surden
