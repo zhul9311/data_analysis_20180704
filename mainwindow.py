@@ -2431,7 +2431,7 @@ class MainWindow (QMainWindow):
                 int_bulk=effv*self.avoganum*conbulk*self.fluelepara[0][1]/1e27  #bluk intensity; the element in the first row is the target element
                 int_tot=yscale*trans*(int_sur+int_bulk)+bgcon+bglin*alpha[i]
                 flu.append(int_tot)
-             #   p_d.append(effd)
+             #p_d.append(effd)
         else:  #with surface curvature 
             flu=[]
             self.flu_oil = []
@@ -2446,18 +2446,21 @@ class MainWindow (QMainWindow):
                 x=np.linspace(-fprint[i]/2, detlen/2, steps) # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
                 for j in range(len(x)):
                     alphanew=alpha[i]-x[j]/surcur  # the incident angle at position x[j]
-                    y1=-detlen/2-x[j] # distance between x' and left edge of detector
-                    y2=detlen/2-x[j] # distance between x' and right edge of detector
+                    y1 = -detlen/2-x[j]
+                    y2 = detlen/2-x[j]
+                    absorb_y1=np.exp(-y1/topd) # y1 = (-detlen/2-x[j]) distance between x' and left edge of detector
+                    absorb_y2=np.exp(-y2/topd) # y2 = (detlen/2-x[j]) distance between x' and right edge of detector
                     effd,trans=self.frsnllCal(self.flutopdel,self.flutopbet,self.flubotdel,self.flubotbeta,self.flubotmu1,k0,alphanew)
-                    ref = refModel(2*k0*alphanew)  # calculate the reflectivity at incident angle alpha'.
+                    ref = refModel(2*k0*alphanew)[0]  # calculate the reflectivity at incident angle alpha'.
+                    absorb_top = np.exp(-x[j]/topd)
                     if x[j]>-detlen/2:
-                        bsum = bsum+np.exp(-x[j]/topd)*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
-                        ssum = ssum+np.exp(-x[j]/topd)*trans
-                        # usum = usum + alpha[i] * np.exp(-x[j]/topd) * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*ref[i])
-                        usum = usum + alpha*topd((1-exp(y1/topd))+ref*(1-exp(-y2/topd))) # eq (x)(1)
+                        bsum = bsum+absorb_top*trans*effd*(1.0-np.exp(-y2*alpha[i]/effd)) # equation (5)(1)
+                        ssum = ssum+absorb_top*trans
+                        # usum = usum + alpha[i] * absorb_top * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*ref[i])
+                        usum = usum + absorb_top * alpha[i]*topd*((1-1/absorb_y1)+ref*(1-absorb_y2)) # eq (x)(1)
                     else:
-                        bsum=bsum+np.exp(-x[j]/topd)*trans*effd*(np.exp(-y1*alpha[i]/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
-                        usum = usum + alpha*topd*ref*(exp(-y1/topd)-exp(-y2/topd)) # eq (x)(2)
+                        bsum=bsum+absorb_top * trans*effd*(alpha[i]/absorb_y1/effd)-np.exp(-y2*alpha[i]/effd))  # #surface has no contribution at this region, equatoin (5)(2)
+                        usum = usum + absorb_top * alpha[i]*topd*ref*(np.exp(-y1/topd)-np.exp(-y2/topd)) # eq (x)(2)
                 int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
                 int_upbk = usum * stepsize * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  # if there is metal ions in the upper phase.
                 int_sur = ssum * stepsize * surden
