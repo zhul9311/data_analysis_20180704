@@ -1738,8 +1738,6 @@ class MainWindow (QMainWindow):
     def updateProgress(self): 
         self.progressDialog.setValue(self.progressDialog.value()+1)
 
-
-    
 ################################################        
 #state the rod analysis section. 
 ################################################
@@ -2376,7 +2374,8 @@ class MainWindow (QMainWindow):
         flupara=[self.flupara[i][0] for i in range(len(self.flupara))]
         if self.flusavefitindex==1:
             xflu=np.linspace(max(0,self.fluxmin),self.fluxmax,self.flunp)
-            self.flucal=np.vstack((xflu,self.fluCalFun(flupara,xflu))).T
+            flu = self.fluCalFun(flupara,xflu)
+            self.flucal=np.vstack((xflu,flu)).T
             self.flu_oil = np.vstack((xflu, self.flu_oil)).T
             self.flu_bulk = np.vstack((xflu, self.flu_bulk)).T
             self.flu_sur = np.vstack((xflu, self.flu_sur)).T
@@ -2390,26 +2389,27 @@ class MainWindow (QMainWindow):
                     self.fluxmax=self.fluqc+0.006  #only calculate the flu around qc (+/- 0.006)
                     self.fluxmin=self.fluqc-0.006
                 xflu=np.linspace(self.fluxmin,self.fluxmax,200)
-                self.flucal=np.vstack((xflu,self.fluCalFun(flupara,xflu))).T
+                flu = self.fluCalFun(flupara, xflu)
+                self.flucal=np.vstack((xflu,flu)).T
                 self.flu_oil = np.vstack((xflu, self.flu_oil)).T
                 self.flu_bulk = np.vstack((xflu, self.flu_bulk)).T
                 self.flu_sur = np.vstack((xflu, self.flu_sur)).T
             self.updateFluPlot()
             
-    def fluCalFun(self,flupara,x):
+    def fluCalFun(self,flupara,qz):
 
-        surden=flupara[0] # surface density
-        qoff=flupara[1] # q offset
-        yscale=flupara[2] # y scale
-        bgcon=flupara[3] # background constant
-        surcur=flupara[5]*1e10   # surface curvature, in unit of /AA
+        surden = flupara[0] # surface density
+        qoff = flupara[1] # q offset
+        yscale = flupara[2] # y scale
+        bgcon = flupara[3] # background constant
+        surcur = flupara[5] * 1e10   # surface curvature, in unit of 1/AA
         conupbk = flupara[4]  # background linear is borrowed for upper phase concentration.
-        conbulk=flupara[6]   # bulk concentration
-        k0=2*np.pi*float(self.ui.fluxenLE.text())/12.3984 # wave vector
-        slit=float(self.ui.flusliLE.text())  #get slits size
-        detlen=float(self.ui.fludetLE.text())*1e7  #get detector length in unit of /AA 
-        topd=1/(self.flutopbet*2*k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
-        qz=x+qoff
+        conbulk = flupara[6]   # bulk concentration
+        k0 = 2 * np.pi * float(self.ui.fluxenLE.text()) / 12.3984 # wave vector
+        slit = float(self.ui.flusliLE.text())  #get slits size
+        detlen = float(self.ui.fludetLE.text()) * 1e7  #get detector length in unit of /AA
+        topd = 1 / (self.flutopbet * 2 * k0) #get the absorption length in top phase: len=1/mu=1/(beta*2*k)
+        qz = qz + qoff
 
         self.refparameter['q_off'].value = 0 # reset qoffset in the reflectivity data.
         self.refparameter['rho_b'].value = float(self.ui.flurhobotLE.text()) # set electron density for bottom phase
@@ -2417,72 +2417,117 @@ class MainWindow (QMainWindow):
 
         refModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
         # ref = refModel(qz) # reflectivity at every Qz point
-        alpha=qz/2/k0  #get incident angle
-        fprint=slit/alpha*1e7 #get the footprint in unit of /AA
-        if surcur==0:  #no surface curvature  
-            flu=[]
-            #p_d=[]
-            for i in range(len(alpha)):
-                z1=(fprint[i]-detlen)/2*alpha[i]
-                z2=(fprint[i]+detlen)/2*alpha[i]
-                effd,trans=self.frsnllCal(self.flutopdel,self.flutopbet,self.flubotdel,self.flubotbeta,self.flubotmu1,k0,alpha[i]) 
-                effv=effd*topd*np.exp(-detlen/2/topd)*(detlen*effd*np.exp(z2/alpha[i]/topd)*(np.exp(-z1/effd)-np.exp(-z2/effd))+topd*(np.exp(detlen/topd)-1)*(z1-z2))/(detlen*effd+topd*(z1-z2))
-                int_sur=surden*topd*(np.exp(detlen/2/topd)-np.exp(-detlen/2/topd))   #surface intensity
-                int_bulk=effv*self.avoganum*conbulk*self.fluelepara[0][1]/1e27  #bluk intensity; the element in the first row is the target element
-                int_tot=yscale*trans*(int_sur+int_bulk)+bgcon+bglin*alpha[i]
-                flu.append(int_tot)
-             #p_d.append(effd)
-        else:  #with surface curvature 
-            flu=[]
-            self.flu_oil = []
-            self.flu_bulk = []
-            self.flu_sur = []
-            for i in range(len(alpha)):
-                bsum = 0
-                ssum = 0
-                usum = 0
-                steps=int((detlen+fprint[i])/2/1e6)  # use 0.1 mm as the step size
-                stepsize=(detlen+fprint[i])/2/steps
-                x=np.linspace(-fprint[i]/2, detlen/2, steps) # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
-                for j in range(len(x)):
-                    alphanew=alpha[i]-x[j]/surcur  # the incident angle at position x[j]
-                    effd, trans = self.frsnllCal(self.flutopdel, self.flutopbet, self.flubotdel, self.flubotbeta,
-                                                 self.flubotmu1, k0, alphanew)
-                    ref = refModel(2 * k0 * alphanew)[0]  # calculate the reflectivity at incident angle alpha'.
-                    absorb_top = np.exp(-x[j] / topd)
-                    y1 = -detlen/2-x[j]
-                    y2 = detlen/2-x[j]
-                    absorb_y1=np.exp(-y1/topd) # y1 = (-detlen/2-x[j]) distance between x' and left edge of detector
-                    absorb_y2=np.exp(-y2/topd) # y2 = (detlen/2-x[j]) distance between x' and right edge of detector
-                    absorb_y1_bot = np.exp(-y1*alpha[i]/effd)
-                    absorb_y2_bot = np.exp(-y2*alpha[i]/effd)
+        alpha = qz / 2 / k0  #get incident angle
+        fprint = slit / alpha * 1e7 # get the footprint in unit of /AA
 
-                    if x[j]>-detlen/2:
-                        bsum = bsum+absorb_top*trans*effd*(1.0-absorb_y2_bot) # equation (5)(1)
-                        ssum = ssum+absorb_top*trans
-                        # usum = usum + alpha[i] * absorb_top * ((fprint[i]/2-x[j]) + (fprint[i]/2+x[j])*ref[i])
-                        usum = usum + absorb_top * alpha[i]*topd*((1-1/absorb_y1)+ref*(1-absorb_y2)) # eq (x)(1)
-                    else:
-                        bsum=bsum + absorb_top * trans * effd * (absorb_y1_bot - absorb_y2_bot)  # #surface has no contribution at this region, equatoin (5)(2)
-                        usum = usum + absorb_top * alpha[i] * topd * ref * (absorb_y1 - absorb_y2) # eq (x)(2)
+        self.flu = []
+        self.flu_oil = []
+        self.flu_bulk = []
+        self.flu_sur = []
+
+        if surcur == 0:  #no surface curvature
+            z1 = (fprint - detlen) / 2 * alpha
+            z2 = (fprint + detlen) / 2 * alpha
+            ref = refModel(qz) # reflection for each scan Qz
+            effd, trans = self.frsnllCal(self.flutopdel, self.flutopbet, self.flubotdel, self.flubotbeta,
+                                         self.flubotmu1, k0, alpha)
+            effv = effd * topd * np.exp(-detlen/2/topd) * (detlen * effd * np.exp(z2/alpha/topd) \
+                 * (np.exp(-z1/effd) - np.exp(-z2/effd)) + topd*(np.exp(detlen/topd)-1) * (z1-z2)) \
+                 / (detlen * effd + topd * (z1 - z2))
+            int_sur = surden * topd * (np.exp(detlen / 2 / topd) - np.exp(-detlen / 2 / topd))  # surface intensity
+            int_bulk = effv * self.avoganum * conbulk * self.fluelepara[0][1] / 1e27  # bluk intensity; the element in the first row is the target element
+            int_oil = np.zeros(alpha.shape)
+            for i, a in enumerate(alpha): # equation y
+                int_oil[i] = a * topd * (\
+                        fprint[i]*(1+ref[i])*np.sinh(detlen/topd/2)\
+                      + topd*(ref[i]-1)*(2*np.sinh(detlen/topd/2)-detlen/topd*np.cosh(detlen/2/topd)))
+            int_oil = int_oil * self.avoganum * conupbk * self.fluelepara[0][1] / 1e27
+            self.flu_bulk = yscale * trans * int_bulk + bgcon
+            self.flu_sur = yscale * trans * int_sur + bgcon
+            self.flu_oil = yscale  * int_oil + bgcon
+            self.flu = self.flu_bulk + self.flu_sur + self.flu_oil
+
+        else:  #with surface curvature 
+
+            for i, a in enumerate(alpha):
+                steps = int((detlen + fprint[i]) / 2 / 1e6)  # use 0.1 mm as the step size
+                stepsize = (detlen + fprint[i]) / 2 / steps
+                x = np.linspace(-fprint[i]/2, detlen/2, steps) # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
+
+                alphanew = a - x / surcur  # actual incident angle at each x position
+                ref = refModel(2 * k0 * alphanew)[0]  # calculate the reflectivity at incident angle alpha'.
+                effd, trans = self.frsnllCal(self.flutopdel, self.flutopbet, self.flubotdel, self.flubotbeta,
+                                             self.flubotmu1, k0, alphanew)
+                absorb_top = np.exp(-x / topd)
+                y1 = -detlen / 2 - x
+                y2 = detlen / 2 - x
+                absorb_y1 = np.exp(-y1 / topd)  # y1 = (-detlen/2-x[j]) distance between x' and left edge of detector
+                absorb_y2 = np.exp(-y2 / topd)  # y2 = (detlen/2-x[j]) distance between x' and right edge of detector
+                absorb_y1_bot = np.exp(-y1 * a / effd)
+                absorb_y2_bot = np.exp(-y2 * a / effd)
+
+
+                # for region [-l/2, l/2], x>-l/2
+                absorb_top1 = absorb_top * (x > -detlen/2)
+                # an array of integration along z direction at each x point
+                lower_bulk = absorb_top1 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
+                surface = absorb_top1 * trans
+                upper_bulk = absorb_top1 * a * topd * ((1 - 1 / absorb_y1) + ref * (1 - absorb_y2)) # eq (x)(1)
+                # integration along x direction by performing np.sum along x direction.
+                bsum1 = np.sum(lower_bulk)
+                ssum1 = np.sum(surface)
+                usum1 = np.sum(upper_bulk)
+
+                # for region [-h/(2a),-l2], x<=-l/2
+                absorb_top2 = absorb_top * (x <= -detlen/2)
+                # an array of integration along z direction at each x point
+                lower_bulk = absorb_top2 * trans * effd * (absorb_y1_bot - absorb_y2_bot) # equatoin (5)(2)
+                surface = absorb_top2 * trans
+                upper_bulk = absorb_top2 * a * topd * ref * (absorb_y1 - absorb_y2) # eq (x)(2)
+                # integration along x direction by performing np.sum along x direction.
+                bsum2 = np.sum(lower_bulk)
+                ssum2 = np.sum(surface)
+                usum2 = np.sum(upper_bulk)
+
+                # combine the two regions
+                bsum = bsum1 + bsum2
+                ssum = ssum1 + ssum2
+                usum = usum1 + usum2
+
+                # vectorized integration method is proved to take 1/10~1/5 the time it takes for traditional method.
+
+                ##### traditional integration method using a for loop ######
+                # bsum, ssum, usum = 0, 0, 0
+                # for j, xp in enumerate(x):  # integration along x'
+                #     if xp>-detlen/2:
+                #         bsum = bsum+absorb_top[j]*trans[j]*effd[j]*(1.0-absorb_y2_bot[j])
+                #         ssum = ssum+absorb_top[j]*trans[j]
+                #         usum = usum + absorb_top[j] * a * topd * ((1-1/absorb_y1[j])+ref*(1-absorb_y2[j]))
+                #     else:
+                #         bsum=bsum + absorb_top[j] * trans[j] * effd[j] * (absorb_y1_bot[j] - absorb_y2_bot[j])
+                #         usum = usum + absorb_top[j] * a * topd * ref * (absorb_y1[j] - absorb_y2[j])
+
                 int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
                 int_upbk = usum * stepsize * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  # if there is metal ions in the upper phase.
                 int_sur = ssum * stepsize * surden
                 int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
-                # int_tot = yscale * (int_bulk + int_sur) + bgcon
-                flu.append(int_tot)
+
+                self.flu.append(int_tot)
                 self.flu_oil.append(yscale * int_upbk)
                 self.flu_sur.append(yscale * int_sur)
                 self.flu_bulk.append(yscale * int_bulk)
-        return flu
+        return self.flu
         
     def frsnllCal(self, dett, bett, detb, betb, mub, k0, alpha):
-        f1=cmath.sqrt(complex(alpha*alpha,2*bett))
-        fmax=cmath.sqrt(complex(alpha*alpha-2*(detb-dett),2*betb))
-        length1=1/mub
-        length2=1/(2*k0*fmax.imag)
-        eff_d=length1*length2/(length1+length2)
-        trans=4*abs(f1/(f1+fmax))*abs(f1/(f1+fmax))
+        eff_d = np.zeros(alpha.shape)
+        trans = np.zeros(alpha.shape)
+        for i,a in enumerate(alpha):
+            f1=cmath.sqrt(complex(a**2,2*bett))
+            fmax=cmath.sqrt(complex(a**2-2*(detb-dett),2*betb))
+            length1=1/mub
+            length2=1/(2*k0*fmax.imag)
+            eff_d[i] = length1*length2/(length1+length2)
+            trans[i] = 4*abs(f1/(f1+fmax))*abs(f1/(f1+fmax))
        # frsnll=abs((f1-fmax)/(f1+fmax))*abs((f1-fmax)/(f1+fmax))
         return eff_d, trans
         
@@ -3684,4 +3729,3 @@ class MainWindow (QMainWindow):
         
     def test(self):
         print 'I am here'
-    
