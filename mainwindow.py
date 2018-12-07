@@ -2435,7 +2435,8 @@ class MainWindow (QMainWindow):
                  * (np.exp(-z1/effd) - np.exp(-z2/effd)) + topd*(np.exp(detlen/topd)-1) * (z1-z2)) \
                  / (detlen * effd + topd * (z1 - z2))
             int_sur = surden * topd * (np.exp(detlen / 2 / topd) - np.exp(-detlen / 2 / topd))  # surface intensity
-            int_bulk = effv * self.avoganum * conbulk * self.fluelepara[0][1] / 1e27  # bluk intensity; the element in the first row is the target element
+            # bluk intensity; the element in the first row is the target element
+            int_bulk = effv * self.avoganum * conbulk * self.fluelepara[0][1] / 1e27
             int_oil = np.zeros(alpha.shape)
             for i, a in enumerate(alpha): # equation y
                 int_oil[i] = a * topd * (\
@@ -2452,7 +2453,8 @@ class MainWindow (QMainWindow):
             for i, a in enumerate(alpha):
                 steps = int((detlen + fprint[i]) / 2 / 1e6)  # use 0.1 mm as the step size
                 stepsize = (detlen + fprint[i]) / 2 / steps
-                x = np.linspace(-fprint[i]/2, detlen/2, steps) # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
+                # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
+                x = np.linspace(-fprint[i]/2, detlen/2, steps)
 
                 alphanew = a - x / surcur  # actual incident angle at each x position
                 ref = refModel(2 * k0 * alphanew)[0]  # calculate the reflectivity at incident angle alpha'.
@@ -2470,46 +2472,26 @@ class MainWindow (QMainWindow):
                 # for region [-l/2, l/2], x>-l/2
                 absorb_top1 = absorb_top * (x > -detlen/2)
                 # an array of integration along z direction at each x point
-                lower_bulk = absorb_top1 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
-                surface = absorb_top1 * trans
-                upper_bulk = absorb_top1 * a * topd * ((1 - 1 / absorb_y1) + ref * (1 - absorb_y2)) # eq (x)(1)
-                # integration along x direction by performing np.sum along x direction.
-                bsum1 = np.sum(lower_bulk)
-                ssum1 = np.sum(surface)
-                usum1 = np.sum(upper_bulk)
+                lower_bulk1 = absorb_top1 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
+                surface1 = absorb_top1 * trans
+                upper_bulk1 = absorb_top1 * a * topd * ((1 - 1 / absorb_y1) + ref * (1 - absorb_y2)) # eq (x)(1)
 
                 # for region [-h/(2a),-l2], x<=-l/2
                 absorb_top2 = absorb_top * (x <= -detlen/2)
                 # an array of integration along z direction at each x point
-                lower_bulk = absorb_top2 * trans * effd * (absorb_y1_bot - absorb_y2_bot) # equatoin (5)(2)
-                surface = absorb_top2 * trans
-                upper_bulk = absorb_top2 * a * topd * ref * (absorb_y1 - absorb_y2) # eq (x)(2)
-                # integration along x direction by performing np.sum along x direction.
-                bsum2 = np.sum(lower_bulk)
-                ssum2 = np.sum(surface)
-                usum2 = np.sum(upper_bulk)
+                lower_bulk2 = absorb_top2 * trans * effd * (absorb_y1_bot - absorb_y2_bot) # equatoin (5)(2)
+                surface2 = absorb_top2 * trans
+                upper_bulk2 = absorb_top2 * a * topd * ref * (absorb_y1 - absorb_y2) # eq (x)(2)
 
-                # combine the two regions
-                bsum = bsum1 + bsum2
-                ssum = ssum1 + ssum2
-                usum = usum1 + usum2
+                # combine the two regions and integrate along x direction by performing np.sum.
+                bsum = stepsize * np.sum(lower_bulk1 + lower_bulk2)
+                ssum = stepsize * np.sum(surface1 + surface2)
+                usum = stepsize * np.sum(upper_bulk1 + upper_bulk2)
 
                 # vectorized integration method is proved to take 1/10~1/5 the time it takes for traditional method.
-
-                ##### traditional integration method using a for loop ######
-                # bsum, ssum, usum = 0, 0, 0
-                # for j, xp in enumerate(x):  # integration along x'
-                #     if xp>-detlen/2:
-                #         bsum = bsum+absorb_top[j]*trans[j]*effd[j]*(1.0-absorb_y2_bot[j])
-                #         ssum = ssum+absorb_top[j]*trans[j]
-                #         usum = usum + absorb_top[j] * a * topd * ((1-1/absorb_y1[j])+ref*(1-absorb_y2[j]))
-                #     else:
-                #         bsum=bsum + absorb_top[j] * trans[j] * effd[j] * (absorb_y1_bot[j] - absorb_y2_bot[j])
-                #         usum = usum + absorb_top[j] * a * topd * ref * (absorb_y1[j] - absorb_y2[j])
-
-                int_bulk = bsum * stepsize * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
-                int_upbk = usum * stepsize * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  # if there is metal ions in the upper phase.
-                int_sur = ssum * stepsize * surden
+                int_bulk = bsum * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
+                int_upbk = usum * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  #metal ions in the upper phase.
+                int_sur = ssum * surden
                 int_tot = yscale * (int_bulk + int_sur + int_upbk) + bgcon
 
                 self.flu.append(int_tot)
