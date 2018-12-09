@@ -2437,34 +2437,14 @@ class MainWindow (QMainWindow):
             int_sur = surden * topd * (np.exp(detlen / 2 / topd) - np.exp(-detlen / 2 / topd))  # surface intensity
             # bluk intensity; the element in the first row is the target element
             int_bulk = effv * self.avoganum * conbulk * self.fluelepara[0][1] / 1e27
+            # bulk intensity in oil phase
             int_oil = np.zeros(alpha.shape)
             for i, a in enumerate(alpha): # equation y
-                # int_oil[i] = a * topd * (\
-                #         fprint[i]*(1+ref[i])*np.sinh(detlen/topd/2)\
-                #       + topd*(ref[i]-1)*(2*np.sinh(detlen/topd/2)-detlen/topd*np.cosh(detlen/2/topd)))
-
-                steps = int(fprint[i] / 1e6)  # use 0.1 mm as the step size
-                stepsize = fprint[i] / steps
-                # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
-                x = np.linspace(-fprint[i] / 2, fprint[i] / 2, steps)
-                ref = refModel(2 * k0 * a)[0]
-
-                absorb_top = np.exp(-x / topd)
-                y1 = x + detlen / 2  # y1 = (-detlen/2-x[j]) distance between x' and left edge of detector
-                y2 = x - detlen / 2  # y2 = (detlen/2-x[j]) distance between x' and right edge of detector
-                absorb_y1 = np.exp(y1 / topd)
-                absorb_y2 = np.exp(y2 / topd)
-
-                absorb_top1 = absorb_top * (x <= -detlen / 2)
-                upper_bulk1 = absorb_top1 * a * topd * ref * (absorb_y1 - absorb_y2)  # eq (x)(2)
-                absorb_top2 = absorb_top * (x > -detlen / 2) * (x < detlen / 2)
-                upper_bulk2 = absorb_top2 * topd * a * ((1 - 1 / absorb_y1) + ref * (1 - absorb_y2))
-                absorb_top3 = absorb_top * (x >= detlen / 2)
-                upper_bulk3 = absorb_top3 * a * topd * (1 / absorb_y2 - 1 / absorb_y1)
-                int_oil[i] = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
-
-
+                int_oil[i] = a * topd * (\
+                        fprint[i]*(1+ref[i])*np.sinh(detlen/topd/2)\
+                      + topd*(ref[i]-1)*(2*np.sinh(detlen/topd/2)-detlen/topd*np.cosh(detlen/2/topd)))
             int_oil = int_oil * self.avoganum * conupbk * self.fluelepara[0][1] / 1e27
+
             self.flu_bulk = yscale * trans * int_bulk + bgcon
             self.flu_sur = yscale * trans * int_sur + bgcon
             self.flu_oil = yscale  * int_oil + bgcon
@@ -2476,10 +2456,10 @@ class MainWindow (QMainWindow):
                 steps = int(fprint[i] / 1e6)  # use 0.1 mm as the step size
                 stepsize = fprint[i] / steps
                 # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
-                x = np.linspace(-fprint[i]/2, fprint[i]/2, steps)
+                x = np.linspace(-fprint[i]/2, detlen/2, steps)
 
                 a_new = a - x / surcur  # actual incident angle at each x position
-                ref = refModel(2 * k0 * a_new)[0]  # calculate the reflectivity at incident angle alpha'.
+                ref = refModel(2 * k0 * a_new)  # calculate the reflectivity at incident angle alpha'.
                 effd, trans = self.frsnllCal(self.flutopdel, self.flutopbet, self.flubotdel, self.flubotbeta,
                                              self.flubotmu1, k0, a_new)
                 absorb_top = np.exp(-x / topd)
@@ -2494,24 +2474,40 @@ class MainWindow (QMainWindow):
                 absorb_top1 = absorb_top * (x <= -detlen / 2)
                 # an array of integration along z direction at each x point
                 lower_bulk1 = absorb_top1 * trans * effd * (absorb_y1_bot - absorb_y2_bot)  # equatoin (5)(2)
-                surface2 = absorb_top1 * trans
-                upper_bulk1 = absorb_top1 * a * topd * ref * (absorb_y1 - absorb_y2)  # eq (x)(2)
+                surface1 = absorb_top1 * trans
+                # upper_bulk1 = absorb_top1 * a * topd * ref * (absorb_y1 - absorb_y2)  # eq (x)(2)
 
                 # for region [-l/2, l/2], -l/2 < x < l/2
-                absorb_top2 = absorb_top * (x > -detlen/2) * (x < detlen/2)
+                absorb_top2 = absorb_top * (x > -detlen/2)
                 # an array of integration along z direction at each x point
                 lower_bulk2 = absorb_top2 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
-                surface1 = absorb_top2 * trans
-                upper_bulk2 = absorb_top2 * topd * (a * (1 - 1 / absorb_y1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
+                surface2 = absorb_top2 * trans
+                # upper_bulk2 = absorb_top2 * topd * (a * (1 - 1 / absorb_y1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
+                # upper_bulk2 = absorb_top2 * (a * (fprint[i]/2 - x) + a_new * ref * (fprint[i]/2 + x))
+                ref_int = np.zeros(x.shape)
+                for i,xx in enumerate(x):
+                    if xx > -detlen/2:
+                        stepsize_z = (fprint[i]/2 + xx) * a / 100.0
+                        z = np.linspace(0,(fprint[i]/2+xx)*a, 100)
+                        a1 = a - (xx - z/a)/surcur
+                        ref_new = refModel(2 * k0 * a1)
+                        ref_int[i] = stepsize_z * sum(ref_new)
+                upper_bulk2 = absorb_top2 * a * ((fprint[i]/2 - x) + ref_int)
+
+
+
+
 
                 # for region [l/2, f/2], x>= l/2
-                absorb_top3 = absorb_top * (x >= detlen/2)
-                upper_bulk3 =absorb_top3 * a * topd * (1/absorb_y2 - 1/absorb_y1)
+                # absorb_top3 = absorb_top * (x >= detlen/2)
+                # upper_bulk3 =absorb_top3 * a * topd * (1/absorb_y2 - 1/absorb_y1)
                 
                 # combine the two regions and integrate along x direction by performing np.sum.
                 bsum = stepsize * np.sum(lower_bulk1 + lower_bulk2)
                 ssum = stepsize * np.sum(surface1 + surface2)
-                usum = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
+                # usum = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
+                usum = stepsize * np.sum(upper_bulk2)
+
 
                 # vectorized integration method is proved to take 1/10~1/5 the time it takes for traditional method.
                 int_bulk = bsum * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
