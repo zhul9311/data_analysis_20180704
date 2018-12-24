@@ -2416,7 +2416,6 @@ class MainWindow (QMainWindow):
         self.refparameter['rho_t'].value = float(self.ui.flurhotopLE.text()) # set electron density for top phase
 
         refModel = self.ref2min(self.refparameter, None, None, None, fit=False, rrf=False)
-        # ref = refModel(qz) # reflectivity at every Qz point
         alpha = qz / 2 / k0  #get incident angle
         fprint = slit / alpha * 1e7 # get the footprint in unit of /AA
 
@@ -2456,57 +2455,42 @@ class MainWindow (QMainWindow):
                 steps = int(fprint[i] / 1e6)  # use 0.1 mm as the step size
                 stepsize = fprint[i] / steps
                 # get the position fo single ray hitting the surface relative to the center of detector area with the step size "steps"
-                x = np.linspace(-fprint[i]/2, detlen/2, steps)
+                x = np.linspace(-fprint[i]/2, fprint[i]/2, steps)
 
                 a_new = a - x / surcur  # actual incident angle at each x position
                 ref = refModel(2 * k0 * a_new)  # calculate the reflectivity at incident angle alpha'.
                 effd, trans = self.frsnllCal(self.flutopdel, self.flutopbet, self.flubotdel, self.flubotbeta,
                                              self.flubotmu1, k0, a_new)
                 absorb_top = np.exp(-x / topd)
-                y1 = x + detlen / 2   # y1 = (-detlen/2-x[j]) distance between x' and left edge of detector
-                y2 = x - detlen / 2   # y2 = (detlen/2-x[j]) distance between x' and right edge of detector
+                y1 = x + detlen / 2   #  distance between x' and left edge of detector
+                y2 = x - detlen / 2   # distance between x' and right edge of detector
                 absorb_y1 = np.exp(y1 / topd)
                 absorb_y2 = np.exp(y2 / topd)
-                absorb_y1_bot = np.exp(y1 * a / effd)
-                absorb_y2_bot = np.exp(y2 * a / effd)
+                absorb_y1_bot = np.nan_to_num(np.exp(y1 * a / effd)) # use nan_to_num to handle possible np.inf numbers.
+                absorb_y2_bot = np.nan_to_num(np.exp(y2 * a / effd))
 
                 # for region [-h/(2a),-l2], x<=-l/2
                 absorb_top1 = absorb_top * (x <= -detlen / 2)
                 # an array of integration along z direction at each x point
                 lower_bulk1 = absorb_top1 * trans * effd * (absorb_y1_bot - absorb_y2_bot)  # equatoin (5)(2)
-                surface1 = absorb_top1 * trans
-                # upper_bulk1 = absorb_top1 * a * topd * ref * (absorb_y1 - absorb_y2)  # eq (x)(2)
+                upper_bulk1 = absorb_top1 * a * topd * ref * (absorb_y1 - absorb_y2)  # eq (x)(2)
 
                 # for region [-l/2, l/2], -l/2 < x < l/2
-                absorb_top2 = absorb_top * (x > -detlen/2)
+                absorb_top2 = absorb_top * (x > -detlen/2) * (x < detlen/2)
                 # an array of integration along z direction at each x point
                 lower_bulk2 = absorb_top2 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
-                surface2 = absorb_top2 * trans
-                # upper_bulk2 = absorb_top2 * topd * (a * (1 - 1 / absorb_y1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
-                # upper_bulk2 = absorb_top2 * (a * (fprint[i]/2 - x) + a_new * ref * (fprint[i]/2 + x))
-                ref_int = np.zeros(x.shape)
-                for i,xx in enumerate(x):
-                    if xx > -detlen/2:
-                        stepsize_z = (fprint[i]/2 + xx) * a / 100.0
-                        z = np.linspace(0,(fprint[i]/2+xx)*a, 100)
-                        a1 = a - (xx - z/a)/surcur
-                        ref_new = refModel(2 * k0 * a1)
-                        ref_int[i] = stepsize_z * sum(ref_new)
-                upper_bulk2 = absorb_top2 * a * ((fprint[i]/2 - x) + ref_int)
-
-
-
-
+                upper_bulk2 = absorb_top2 * topd * (a * (1 - 1 / absorb_y1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
+                surface = absorb_top2 * trans
 
                 # for region [l/2, f/2], x>= l/2
-                # absorb_top3 = absorb_top * (x >= detlen/2)
-                # upper_bulk3 =absorb_top3 * a * topd * (1/absorb_y2 - 1/absorb_y1)
+                absorb_top3 = absorb_top * (x >= detlen/2)
+                # an array of integration along z direction at each x point
+                upper_bulk3 =absorb_top3 * a * topd * (1/absorb_y2 - 1/absorb_y1)
                 
                 # combine the two regions and integrate along x direction by performing np.sum.
                 bsum = stepsize * np.sum(lower_bulk1 + lower_bulk2)
-                ssum = stepsize * np.sum(surface1 + surface2)
-                # usum = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
-                usum = stepsize * np.sum(upper_bulk2)
+                ssum = stepsize * np.sum(surface)
+                usum = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
 
 
                 # vectorized integration method is proved to take 1/10~1/5 the time it takes for traditional method.
