@@ -2479,13 +2479,13 @@ class MainWindow (QMainWindow):
                 absorb_top2 = absorb_top * (x > -detlen/2) * (x < detlen/2)
                 # an array of integration along z direction at each x point
                 lower_bulk2 = absorb_top2 * trans * effd * (1.0 - absorb_y2_bot) # equation (5)(1)
-                upper_bulk2 = absorb_top2 * topd * (a * (1 - 1 / absorb_y1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
+                upper_bulk2 = absorb_top2 * topd * (a * (absorb_y1 - 1) + a_new * ref * (1 - absorb_y2)) # eq (x)(1)
                 surface = absorb_top2 * trans
 
                 # for region [l/2, f/2], x>= l/2
                 absorb_top3 = absorb_top * (x >= detlen/2)
                 # an array of integration along z direction at each x point
-                upper_bulk3 =absorb_top3 * a * topd * (1/absorb_y2 - 1/absorb_y1)
+                upper_bulk3 =absorb_top3 * a * topd * (absorb_y1 - absorb_y2)
                 
                 # combine the two regions and integrate along x direction by performing np.sum.
                 bsum = stepsize * np.sum(lower_bulk1 + lower_bulk2)
@@ -2493,7 +2493,7 @@ class MainWindow (QMainWindow):
                 usum = stepsize * np.sum(upper_bulk1 + upper_bulk2 + upper_bulk3)
 
 
-                # vectorized integration method is proved to take 1/10~1/5 the time it takes for traditional method.
+                # vectorized integration method is proved to reduce the computation time by a factor of 5 to 10.
                 int_bulk = bsum * self.avoganum * conbulk * self.fluelepara[0][1]/1e27
                 int_upbk = usum * self.avoganum * conupbk * self.fluelepara[0][1]/1e27  #metal ions in the upper phase.
                 int_sur = ssum * surden
