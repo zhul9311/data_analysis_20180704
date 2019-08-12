@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/zhuzi/work/data_analysis_20180704/')
+# sys.path.append('/Users/zhuzi/work/data_analysis_20190514/')
 import xr_ref as xr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +15,6 @@ energy = 20 # keV
 
 def sldCalFun(d,rho,sigma,x):
     N = len(rho) - 1 # number of internal interfaces
-    if N==4: import pdb;pdb.set_trace();
     z = [0] + [sum(d[:j+1]) for j in range(len(d))] # height of each interface
     sld_tot = np.zeros(x.shape)
     
@@ -40,20 +39,22 @@ def refCalFun(d,rho,mu,sigma,syspara,x,rrf=True):
     slab=0.25
     k0=2*np.pi*float(energy)/12.3984 # wave vector
     theta=x/2/k0   # convert q to theta
+   
     # total length of inner slabs plus 4 times roughness for both sides
-    length=np.sum(d)+4*(sigma[0]+sigma[-1])
-    steps=int(length/slab) # each sliced box has thickness of ~ 0.25 \AA
-    xsld=np.linspace(-4*sigma[0],np.sum(d)+4*sigma[-1],steps) # get the x-axis for sld
-
-    intrho=sldCalFun(d,rho,sigma,xsld)
-    intmu=sldCalFun(d,mu,sigma,xsld)
+    length = np.sum(d) + 4* (sigma[0]+sigma[-1])
+    steps=int(length/slab) # each sliced box has thickness of ~ 0.25 A
+    xsld=np.linspace(-4*sigma[0],np.sum(d)+4*sigma[-1],steps) # get the z-axis for sld
+  
+   
     sd=length/steps # thickness for each slab
+    intrho=sldCalFun(d,rho,sigma,xsld) # rho for all the steps
+    intmu=sldCalFun(d,mu,sigma,xsld) # mu for all the steps
+    
 
     sdel=[]
     sbet=[]
     sdel.append(erad*2.0*np.pi/k0/k0*rho[0]) # delta for the top phase
     sbet.append(mu[0]/2/k0/1e8)        # beta for the top phase
-
     # add delta for the interface
     sdel=sdel+[intrho[i]*erad*2.0*np.pi/k0/k0 for i in range(len(intrho))] 
     sbet=sbet+[intmu[i]/2/k0/1e8 for i in range(len(intmu))] # add beta for the interface
@@ -83,7 +84,7 @@ def ref2min(params,x,y,yerr,fit=True):
     par = params.valuesdict()
     for p in par:
         if p.startswith('sigma'):
-            if p.endswith('_t'):
+            if p.endswith('0'):
                 sigma_t.append(par[p]); continue
             else:
                 sigma.append(par[p]); continue

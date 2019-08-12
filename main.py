@@ -11,12 +11,12 @@ if __name__ == '__main__':
     # create application
     pyqtRemoveInputHook()
     app = QApplication(sys.argv)
-    app.setApplicationName('X-ray-Data-Analyzer')
+    app.setApplicationName('15ID-C XFNTR Analyzer')
     
 
     # create widget
     w = MainWindow()
-    w.setWindowTitle('X-ray-Data-Analyzer')
+    w.setWindowTitle('15ID-C XFNTR Analyzer')
     #w.setWindowIcon(QIcon('logo.png'))
     w.show()
 
